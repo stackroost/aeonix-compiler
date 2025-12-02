@@ -2,3 +2,4 @@ zig-out/
 a.out
 aeonix
 *.o
+.zig-cache

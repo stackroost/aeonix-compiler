@@ -8,11 +8,11 @@ pub const StatementEmit = struct {
 pub const Ast = struct {
     stmts: std.ArrayList(StatementEmit),
 
-    pub fn init() Ast {
-        return Ast{ .stmts = std.ArrayList(StatementEmit).init(std.heap.page_allocator) };
+    pub fn init() !Ast {
+        return Ast{ .stmts = try std.ArrayList(StatementEmit).initCapacity(std.heap.page_allocator, 0) };
     }
 
     pub fn addStatement(self: *Ast, s: StatementEmit) !void {
-        try self.stmts.append(s);
+        try self.stmts.append(std.heap.page_allocator, s);
     }
 };
