@@ -1,0 +1,3 @@
+// Aeonix std: io.aex
+// Placeholder: later compiled by Aeonix itself
+pub fn println(s: str) { /* builtin */ }

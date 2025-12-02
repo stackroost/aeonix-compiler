@@ -1,0 +1,4 @@
+zig-out/
+a.out
+aeonix
+*.o
