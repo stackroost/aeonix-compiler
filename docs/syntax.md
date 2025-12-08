@@ -338,3 +338,163 @@ unit main() {
 - Skips remaining statements in the current iteration
 - Control resumes at the loop condition
 - Compile-time error if used outside a loop
+## 11. Keyword: next
+
+### Purpose
+
+Abandons the current execution path inside a loop and jumps directly to the next scheduling cycle.
+
+This mirrors:
+
+Kernel schedulers (next task)
+
+Netfilter pipelines (goto next)
+
+BPF program tail-jump mentality
+
+### Mental Model (System-Level)
+
+next = advance execution
+
+Does not stop the loop
+
+Does not evaluate remaining statements
+
+Think:
+
+"Move to the next execution slot."
+
+### Syntax
+
+next
+
+### Example
+
+unit main() {
+    state i = 0
+
+    loop i < 5 {
+        i = i + 1
+
+        guard i == 3 {
+            next
+        }
+
+        emitln i
+    }
+}
+
+### Semantics
+
+Valid only inside loop
+
+Jumps to the loop condition
+
+No arguments allowed
+
+Compile-time error outside loop
+## 12. Keyword: exit
+
+### Purpose
+
+exit terminates execution of the current unit immediately.
+
+This maps directly to:
+
+Linux exit / exit_group
+
+Process termination
+
+End of execution path
+
+### Mental Model (System-Level)
+
+exit is not a language feature
+
+It is an execution boundary
+
+Once called, no further instructions run
+
+Think:
+
+"End this execution context now."
+
+### Syntax
+
+exit
+
+### Example
+
+unit main() {
+    emitln "starting"
+
+    guard syscall.pid == 0 {
+        emitln "kernel context"
+        exit
+    }
+
+    emitln "user context"
+}
+
+### Semantics
+
+Terminates the current unit
+
+No return values in v0
+
+Control does not continue past exit
+
+Valid anywhere inside a unit
+## 13. Keyword: dispatch
+
+### Purpose
+
+dispatch routes execution to a specific path based on a selector value.
+
+This models:
+
+Kernel demultiplexing
+
+Syscall routing
+
+eBPF tail-call style branching
+
+### Mental Model (System-Level)
+
+dispatch is not high-level pattern matching
+
+It is a branch table
+
+One input → one execution path
+
+Think:
+
+"Route execution to the correct handler."
+
+### Syntax
+
+dispatch <expression> {
+    <label> => { <statements> }
+}
+
+### Example
+
+unit main() {
+    reg op = syscall.number
+
+    dispatch op {
+        open  => { emitln "open syscall" }
+        read  => { emitln "read syscall" }
+        write => { emitln "write syscall" }
+    }
+}
+
+### Semantics
+
+<expression> evaluated once
+
+Exactly one matching branch executes
+
+No implicit fallthrough
+
+No default branch in v0
