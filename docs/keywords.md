@@ -11,3 +11,6 @@
 | loop    | Defines a controlled execution cycle |
 | halt    | Terminates the current loop immediately |
 | skip    | Abandons the current loop iteration |
+| next    | Abandons the current execution path inside a loop and jumps directly to the next scheduling cycle |
+| exit    | Terminates execution of the current unit immediately |
+| dispatch| Routes execution to a specific path based on a selector value |
