@@ -498,3 +498,141 @@ Exactly one matching branch executes
 No implicit fallthrough
 
 No default branch in v0
+## 14. Keyword: spawn
+
+### Purpose
+
+spawn creates a new execution context (process or task), separate from the current unit.
+
+This directly reflects:
+
+Linux process creation
+
+Kernel task spawning
+
+Userspace helpers started from system tools
+
+### Mental Model (System-Level)
+
+spawn is not a function call
+
+It is a kernel action
+
+Execution continues independently
+
+Think:
+
+"Create a new task and let it run."
+
+### Syntax
+
+spawn <expression>
+
+### Example
+
+unit main() {
+    emitln "parent"
+
+    spawn "/bin/ls"
+
+    emitln "parent continues"
+}
+
+### Semantics
+
+Launches a new process or task
+
+Does not block the current unit
+
+No return value in v0
+
+Failure handling will be added later
+## 15. Keyword: link
+
+### Purpose
+
+Attach another compilation unit / module at link time.
+
+This models:
+
+object files
+
+kernel symbol linking
+
+static resolution
+
+### Mental Model (System-Level)
+
+Think:
+
+"Link in external modules for static resolution."
+
+### Syntax
+
+link <module>
+
+### Example
+
+link fs
+
+unit main() {
+    reg fd = fs.open("/etc/passwd")
+    emitln fd
+}
+
+### Semantics
+
+Attaches module at link time
+
+Enables access to module's symbols
+
+Static resolution
+
+No runtime loading in v0
+## 16. Keyword: expose
+
+### Purpose
+
+Expose a symbol to the linker boundary so other units can bind to it.
+
+This models:
+
+symbol visibility
+
+kernel exported symbols
+
+shared object interfaces
+
+### Mental Model (System-Level)
+
+Think:
+
+"Make this unit visible to other modules."
+
+### Syntax
+
+expose unit <name>() {
+    <statements>
+}
+
+### Example
+
+expose unit add() {
+    emitln "add called"
+}
+
+Used from another file:
+
+link math
+
+math.add()
+
+### Semantics
+
+Makes the unit accessible from linked modules
+
+Symbol exported at link time
+
+Enables inter-module calls
+
+No runtime dynamic linking in v0

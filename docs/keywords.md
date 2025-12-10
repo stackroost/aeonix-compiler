@@ -14,3 +14,6 @@
 | next    | Abandons the current execution path inside a loop and jumps directly to the next scheduling cycle |
 | exit    | Terminates execution of the current unit immediately |
 | dispatch| Routes execution to a specific path based on a selector value |
+| spawn   | Creates a new execution context (process or task), separate from the current unit |
+| link    | Attach another compilation unit / module at link time |
+| expose  | Expose a symbol to the linker boundary so other units can bind to it |
