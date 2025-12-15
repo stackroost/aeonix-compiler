@@ -7,13 +7,13 @@ pub fn parse(tokens: []const Lexer.Token) !Ast.Ast {
 
     // very small parser for `unit main() { emitln "..." }`
     // returns Ast with one top-level unit and a list of statements.
-    var ast = try Ast.Ast.init();
 
     // expect 'unit'
     if (tokens[i].kind != .Unit) return ParserError.InvalidSyntax;
     i += 1;
     // name (identifier)
     if (tokens[i].kind != .Identifier) return ParserError.InvalidSyntax;
+    const unit_name = tokens[i].slice;
     i += 1;
     // expect '(' ')'
     if (tokens[i].kind != .LParen) return ParserError.InvalidSyntax;
@@ -23,6 +23,8 @@ pub fn parse(tokens: []const Lexer.Token) !Ast.Ast {
     // expect '{'
     if (tokens[i].kind != .LBrace) return ParserError.InvalidSyntax;
     i += 1;
+
+    var ast = try Ast.Ast.init(unit_name);
 
     while (tokens[i].kind != .RBrace and tokens[i].kind != .Eof) {
         if (tokens[i].kind == .Emit or tokens[i].kind == .Emitln) {
@@ -39,8 +41,14 @@ pub fn parse(tokens: []const Lexer.Token) !Ast.Ast {
             i += 1;
         }
     }
-    // done
+    if (tokens[i].kind != .RBrace) return ParserError.InvalidSyntax;
+    i += 1;
+    if (tokens[i].kind != .Eof) return ParserError.InvalidSyntax; // ensure exactly one unit
+
+    // validate unit name
+    if (!std.mem.eql(u8, unit_name, "main")) return ParserError.InvalidUnitName;
+
     return ast;
 }
 
-pub const ParserError = error{InvalidSyntax};
+pub const ParserError = error{ InvalidSyntax, InvalidUnitName };
