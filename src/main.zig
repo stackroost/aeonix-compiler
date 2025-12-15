@@ -1,27 +1,47 @@
 const std = @import("std");
-const Lexer = @import("lexer.zig");
-const Parser = @import("parser.zig");
-const Codegen = @import("codegen/x86_64.zig");
 
 pub fn main() !void {
-    const args = try std.process.argsAlloc(std.heap.page_allocator);
-    defer std.process.argsFree(std.heap.page_allocator, args);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
 
-    const path = if (args.len >= 2) args[1] else "examples/hello.aex";
-    const file = try std.fs.cwd().openFile(path, .{});
-    defer file.close();
-    const size = try file.getEndPos();
-    const buf = std.heap.page_allocator.alloc(u8, @intCast(size)) catch {
-        std.debug.print("alloc failed\n", .{});
+    const allocator = arena.allocator();
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+
+    // DEFAULT RUN → SHOW HELP
+    if (args.len == 1) {
+        printHelp();
         return;
-    };
-    defer std.heap.page_allocator.free(buf);
+    }
 
-    _ = try file.read(buf);
+    const cmd = args[1];
 
-    const tokens = try Lexer.tokenize(buf);
-    const ast = try Parser.parse(tokens);
-    try Codegen.codegen(ast);
+    if (std.mem.eql(u8, cmd, "help")) {
+        printHelp();
+    } else if (std.mem.eql(u8, cmd, "build")) {
+        std.debug.print("build not implemented yet\n", .{});
+    } else if (std.mem.eql(u8, cmd, "run")) {
+        std.debug.print("run not implemented yet\n", .{});
+    } else if (std.mem.eql(u8, cmd, "check")) {
+        std.debug.print("check not implemented yet\n", .{});
+    } else if (std.mem.eql(u8, cmd, "ir")) {
+        std.debug.print("ir not implemented yet\n", .{});
+    } else {
+        std.debug.print("Unknown command\n\n", .{});
+        printHelp();
+    }
+}
 
-    std.debug.print("aeonix: compiled {s}\n", .{path});
+fn printHelp() void {
+    std.debug.print(
+        \\ZING — Aeonix Compiler v0.1
+        \\
+        \\Usage:
+        \\  zing build <file.aex>      Compile Aeonix source
+        \\  zing run <file.aex>        Compile and execute
+        \\  zing check <file.aex>      Syntax and verifier checks
+        \\  zing ir <file.aex>         Emit intermediate representation
+        \\  zing help                 Show command help
+        \\
+    , .{});
 }
