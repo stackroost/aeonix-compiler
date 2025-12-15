@@ -1,14 +1,10 @@
 const std = @import("std");
+const Driver = @import("compiler/driver.zig");
 
 pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
+    const args = try std.process.argsAlloc(std.heap.page_allocator);
+    defer std.process.argsFree(std.heap.page_allocator, args);
 
-    const allocator = arena.allocator();
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
-
-    // DEFAULT RUN → SHOW HELP
     if (args.len == 1) {
         printHelp();
         return;
@@ -16,32 +12,33 @@ pub fn main() !void {
 
     const cmd = args[1];
 
-    if (std.mem.eql(u8, cmd, "help")) {
-        printHelp();
+    if (std.mem.eql(u8, cmd, "run")) {
+        if (args.len < 3) {
+            std.debug.print("error: no input file\n", .{});
+            return;
+        }
+        try Driver.compile(args[2]);
     } else if (std.mem.eql(u8, cmd, "build")) {
-        std.debug.print("build not implemented yet\n", .{});
-    } else if (std.mem.eql(u8, cmd, "run")) {
-        std.debug.print("run not implemented yet\n", .{});
-    } else if (std.mem.eql(u8, cmd, "check")) {
-        std.debug.print("check not implemented yet\n", .{});
-    } else if (std.mem.eql(u8, cmd, "ir")) {
-        std.debug.print("ir not implemented yet\n", .{});
+        if (args.len < 3) {
+            std.debug.print("error: no input file\n", .{});
+            return;
+        }
+        try Driver.compile(args[2]);
     } else {
-        std.debug.print("Unknown command\n\n", .{});
         printHelp();
     }
 }
 
 fn printHelp() void {
     std.debug.print(
-        \\ZING — Aeonix Compiler v0.1
+        \\aeonix — Aeonix Compiler v0.1
         \\
         \\Usage:
-        \\  zing build <file.aex>      Compile Aeonix source
-        \\  zing run <file.aex>        Compile and execute
-        \\  zing check <file.aex>      Syntax and verifier checks
-        \\  zing ir <file.aex>         Emit intermediate representation
-        \\  zing help                 Show command help
+        \\  aeonix build <file.aex>      Compile Aeonix source
+        \\  aeonix run <file.aex>        Compile and execute
+        \\  aeonix check <file.aex>      Syntax and verifier checks
+        \\  aeonix ir <file.aex>         Emit intermediate representation
+        \\  aeonix help                 Show command help
         \\
     , .{});
 }
