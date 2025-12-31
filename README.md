@@ -1,6 +1,6 @@
-# aeonix-compiler
+# solnix-compiler
 
-A compiler for the Aeonix programming language, written in Zig. Supports compilation to eBPF and x86_64 targets.
+A compiler for the solnix programming language, written in Zig. Supports compilation to eBPF and x86_64 targets.
 
 ## Building
 
@@ -11,12 +11,12 @@ zig build
 ## Usage
 
 ```bash
-./zig-out/bin/aeonix [command] [file]
+./zig-out/bin/solnix [command] [file]
 ```
 
 Commands:
-- `build <file.aex>`: Compile Aeonix source
-- `run <file.aex>`: Compile and execute
-- `check <file.aex>`: Syntax and verifier checks
-- `ir <file.aex>`: Emit intermediate representation
+- `build <file.snx>`: Compile Aeonix source
+- `run <file.snx>`: Compile and execute
+- `check <file.snx>`: Syntax and verifier checks
+- `ir <file.snx>`: Emit intermediate representation
 - `help`: Show command help
