@@ -15,7 +15,7 @@ zig build
 ```
 
 Commands:
-- `build <file.snx>`: Compile Aeonix source
+- `build <file.snx>`: Compile solnix source
 - `run <file.snx>`: Compile and execute
 - `check <file.snx>`: Syntax and verifier checks
 - `ir <file.snx>`: Emit intermediate representation
