@@ -1,5 +1,23 @@
+# Zig build cache
+.zig-cache/
+
+# Zig build output
 zig-out/
-a.out
-solnix
+
+# Editor / OS junk
+.DS_Store
+*.swp
+*.swo
+*.tmp
+
+# IDEs
+.vscode/
+.idea/
+
+# Debug / profiling
 *.o
-.zig-cache
+*.obj
+*.a
+*.so
+*.dll
+*.exe
