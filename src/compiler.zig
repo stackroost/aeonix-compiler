@@ -1,33 +1,33 @@
 const std = @import("std");
 
-pub const CompileOptions = struct {
-    source: []const u8,
-    target: Target,
-};
+const parser = @import("parser/mod.zig");
+const sema = @import("sema/mod.zig");
+const ir = @import("ir/unit.zig");
+const codegen = @import("./codegen/ebpf/unit.zig");
+const ElfWriter = @import("elf/writer.zig").ElfWriter;
 
-pub const Target = enum {
-    ebpf,
-};
+pub fn compile(src: []const u8) !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
 
-pub const CompileResult = struct {
-    elf: []u8,
-};
+    var unit = try parser.parse(src, allocator);
 
-pub fn compile(
-    allocator: std.mem.Allocator,
-    opts: CompileOptions,
-) !CompileResult {
-    const lexer = @import("lexer/lexer.zig");
-    const parser = @import("parser/parser.zig");
-    const irgen = @import("ir/ir.zig");
-    const codegen = @import("codegen/ebpf.zig");
-    const elf = @import("elf/writer.zig");
+    if (!sema.checkUnit(&unit)) return;
 
-    const tokens = try lexer.lex(allocator, opts.source);
-    const ast = try parser.parse(allocator, tokens);
-    const ir = try irgen.lower(allocator, ast);
-    const prog = try codegen.generate(allocator, ir);
-    const image = try elf.write(allocator, prog);
+    const unit_ir = ir.lowerUnit(&unit);
 
-    return .{ .elf = image };
+    var elf_writer = try ElfWriter.init(allocator);
+    defer elf_writer.deinit();
+
+    try codegen.emitUnit(
+        &elf_writer,
+        unit_ir,
+        unit.sections,
+        unit.license,
+    );
+
+    const elf_bytes = try elf_writer.finish();
+    defer allocator.free(elf_bytes);
+    try std.fs.cwd().writeFile(.{ .sub_path = "out.o", .data = elf_bytes });
 }
