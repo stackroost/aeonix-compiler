@@ -1,41 +1,26 @@
 const std = @import("std");
+const Token = @import("../parser/token.zig").Token;
+const TokenKind = @import("../parser/token.zig").TokenKind;
 
-pub const TokenKind = enum {
-    unit,
-    section,
-    reg,
-    state,
-    guard,
-    fall,
-    ret,
-    identifier,
-    number,
-    lbrace,
-    rbrace,
-    lparen,
-    rparen,
-    equal,
-    semicolon,
-    string,
-    eof,
-};
+pub const Lexer = struct {
+    src: []const u8,
+    index: usize = 0,
 
-pub const Token = struct {
-    kind: TokenKind,
-    lexeme: []const u8,
-};
-
-pub fn lex(
-    allocator: std.mem.Allocator,
-    source: []const u8,
-) ![]Token {
-    var list = std.ArrayList(Token).init(allocator);
-
-    // REAL lexer would scan chars – stub kept honest
-    if (std.mem.indexOf(u8, source, "unit") != null) {
-        try list.append(.{ .kind = .unit, .lexeme = "unit" });
+    pub fn init(src: []const u8) Lexer {
+        return .{
+            .src = src,
+            .index = 0,
+        };
     }
 
-    try list.append(.{ .kind = .eof, .lexeme = "" });
-    return list.toOwnedSlice();
-}
+    pub fn next(self: *Lexer) !Token {
+        _ = self;
+
+        // TEMP stub lexer
+        // Always return EOF for now
+        return Token{
+            .kind = .eof,
+            .lexeme = "",
+        };
+    }
+};
