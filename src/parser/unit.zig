@@ -3,32 +3,41 @@ const std = @import("std");
 const ast = @import("../ast/unit.zig");
 const Parser = @import("parser.zig").Parser;
 
-pub fn parseUnit(self: *Parser) !ast.Unit {
-    try self.expect(.keyword_unit);
+pub fn parseUnit(self: *Parser) Parser.ParseError!ast.Unit  {
+    const unit_loc = self.current.loc;
+    _ = try self.expect(.keyword_unit);
 
     const name_tok = try self.expect(.identifier);
-    try self.expect(.l_brace);
+    _ = try self.expect(.l_brace);
 
-    var sections = std.ArrayList([]const u8).init(self.allocator);
+    var sections = try std.ArrayList([]const u8).initCapacity(self.allocator, 4);
     var license: ?[]const u8 = null;
-    var body = std.ArrayList(ast.Stmt).init(self.allocator);
+    var body = try std.ArrayList(ast.Stmt).initCapacity(self.allocator, 8);
 
     while (!self.match(.r_brace)) {
         if (self.match(.keyword_section)) {
             const s = try self.expect(.string_literal);
-            try sections.append(s.lexeme);
+            // Extract string content (remove quotes)
+            const content = if (s.lexeme.len >= 2) s.lexeme[1..s.lexeme.len-1] else "";
+            try sections.append(self.allocator, try self.allocator.dupe(u8, content));
             continue;
         }
 
         if (self.match(.keyword_license)) {
             const l = try self.expect(.string_literal);
-            license = l.lexeme;
+            // Extract string content (remove quotes)
+            const content = if (l.lexeme.len >= 2) l.lexeme[1..l.lexeme.len-1] else "";
+            license = try self.allocator.dupe(u8, content);
             continue;
         }
 
         if (self.match(.keyword_return)) {
+            const return_loc = self.current.loc;
             const v = try self.expect(.number);
-            try body.append(.{ .Return = v.int_value });
+            try body.append(self.allocator, ast.Stmt{
+                .kind = .{ .Return = v.int_value },
+                .loc = return_loc,
+            });
             continue;
         }
 
@@ -36,9 +45,10 @@ pub fn parseUnit(self: *Parser) !ast.Unit {
     }
 
     return ast.Unit{
-        .name = name_tok.lexeme,
-        .sections = sections.toOwnedSlice(),
-        .license = license,
-        .body = body.toOwnedSlice(),
+        .name = try self.allocator.dupe(u8, name_tok.lexeme),
+        .loc = unit_loc,
+        .sections = sections.toOwnedSlice(self.allocator),
+        .license = if (license) |l| try self.allocator.dupe(u8, l) else null,
+        .body = body.toOwnedSlice(self.allocator),
     };
 }
