@@ -1,5 +1,19 @@
 const std = @import("std");
 
+pub const SourceLoc = struct {
+    line: usize,
+    column: usize,
+    offset: usize,
+
+    pub fn init(line: usize, column: usize, offset: usize) SourceLoc {
+        return .{
+            .line = line,
+            .column = column,
+            .offset = offset,
+        };
+    }
+};
+
 pub const TokenKind = enum {
     // keywords
     keyword_unit,
@@ -22,6 +36,7 @@ pub const TokenKind = enum {
 pub const Token = struct {
     kind: TokenKind,
     lexeme: []const u8,
+    loc: SourceLoc,
 
     // optional numeric value (used by number tokens)
     int_value: i64 = 0,

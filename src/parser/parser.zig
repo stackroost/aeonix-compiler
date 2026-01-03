@@ -9,6 +9,17 @@ pub const Parser = struct {
     lexer: Lexer,
     current: Token,
 
+    pub const ParseError = error{
+        UnexpectedToken,
+        ParseError,
+        UnterminatedComment,
+        InvalidCharacter,
+        ExpectedStringLiteral,
+        UnterminatedString,
+        InvalidEscapeSequence,
+        OutOfMemory,
+    };
+
     pub fn init(src: []const u8, allocator: std.mem.Allocator) !Parser {
         var lexer = Lexer.init(src);
         const first = try lexer.next();
@@ -24,19 +35,19 @@ pub const Parser = struct {
         _ = self;
     }
 
-    pub fn advance(self: *Parser) !void {
+    pub fn advance(self: *Parser) ParseError!void {
         self.current = try self.lexer.next();
     }
 
     pub fn match(self: *Parser, kind: TokenKind) bool {
         if (self.current.kind == kind) {
-            _ = self.advance() catch {};
+            _ = self.advance() catch {}; // swallow error here as you already do
             return true;
         }
         return false;
     }
 
-    pub fn expect(self: *Parser, kind: TokenKind) !Token {
+    pub fn expect(self: *Parser, kind: TokenKind) ParseError!Token {
         if (self.current.kind != kind) {
             return error.UnexpectedToken;
         }
@@ -45,23 +56,15 @@ pub const Parser = struct {
         return tok;
     }
 
-    pub fn parseError(self: *Parser, msg: []const u8) !noreturn {
+    pub fn parseError(self: *Parser, msg: []const u8) ParseError {
         _ = self;
         _ = msg;
+        // (optional) record msg somewhere / print it, etc.
         return error.ParseError;
     }
 
-    pub fn parseUnit(self: *Parser) !ast.Unit {
-        // Stub implementation
-        const name = try self.allocator.dupe(u8, "");
-        const sections = try self.allocator.alloc([]const u8, 0);
-        const body = try self.allocator.alloc(ast.Stmt, 0);
-
-        return ast.Unit{
-            .name = name,
-            .sections = sections,
-            .license = null,
-            .body = body,
-        };
+    pub fn parseUnit(self: *Parser) ParseError!ast.Unit {
+        const unit_parser = @import("unit.zig");
+        return unit_parser.parseUnit(self);
     }
 };
