@@ -10,7 +10,7 @@ pub const Diagnostic = struct {
     level: DiagnosticLevel,
     message: []const u8,
     loc: SourceLoc,
-    source: []const u8, // Full source code for context
+    source: []const u8,
 
     pub fn format(
         self: Diagnostic,
@@ -28,38 +28,33 @@ pub const Diagnostic = struct {
 
         try writer.print("{s}: {s}\n", .{ level_str, self.message });
 
-        // Find the line containing the error
         var line_start: usize = 0;
         var line_num: usize = 1;
         var i: usize = 0;
 
-        while (i < self.loc.offset and i < self.source.len) {
+        while (i < self.loc.offset and i < self.source.len) : (i += 1) {
             if (self.source[i] == '\n') {
                 line_num += 1;
                 line_start = i + 1;
             }
-            i += 1;
         }
 
-        // Find line end
         var line_end = line_start;
         while (line_end < self.source.len and self.source[line_end] != '\n') {
             line_end += 1;
         }
 
         const line = self.source[line_start..line_end];
-        const column_in_line = self.loc.offset - line_start;
+        const column = self.loc.offset - line_start;
 
-        // Print line number and source line
         try writer.print("  {d} | {s}\n", .{ line_num, line });
+        try writer.print("     | ", .{});
 
-        // Print caret pointing to error
-        const padding = "     | ";
-        try writer.print("{s}", .{padding});
         var j: usize = 0;
-        while (j < column_in_line) : (j += 1) {
+        while (j < column) : (j += 1) {
             try writer.writeByte(' ');
         }
+
         try writer.print("^\n", .{});
     }
 };
@@ -71,9 +66,10 @@ pub const Diagnostics = struct {
     pub fn init(allocator: std.mem.Allocator) Diagnostics {
         return .{
             .allocator = allocator,
-            .diagnostics = std.ArrayList(Diagnostic).initCapacity(allocator, 16) catch {
-                @panic("Failed to allocate diagnostics");
-            },
+            .diagnostics = std.ArrayList(Diagnostic).initCapacity(
+                allocator,
+                16,
+            ) catch @panic("OOM"),
         };
     }
 
@@ -87,7 +83,7 @@ pub const Diagnostics = struct {
         loc: SourceLoc,
         source: []const u8,
     ) !void {
-        try self.diagnostics.append(self.allocator, Diagnostic{
+        try self.diagnostics.append(self.allocator, .{
             .level = .@"error",
             .message = message,
             .loc = loc,
@@ -101,7 +97,7 @@ pub const Diagnostics = struct {
         loc: SourceLoc,
         source: []const u8,
     ) !void {
-        try self.diagnostics.append(self.allocator, Diagnostic{
+        try self.diagnostics.append(self.allocator, .{
             .level = .warning,
             .message = message,
             .loc = loc,
@@ -110,33 +106,34 @@ pub const Diagnostics = struct {
     }
 
     pub fn hasErrors(self: *const Diagnostics) bool {
-        for (self.diagnostics.items) |diag| {
-            if (diag.level == .@"error") {
-                return true;
-            }
+        for (self.diagnostics.items) |d| {
+            if (d.level == .@"error") return true;
         }
         return false;
     }
 
     pub fn printAll(self: *const Diagnostics, writer: anytype) !void {
-        for (self.diagnostics.items) |diag| {
-            try diag.format("", .{}, writer);
+        for (self.diagnostics.items) |d| {
+            try d.format("", .{}, writer);
         }
     }
 
-    const StdDebugWriter = struct {};
+    const StdDebugWriter = struct {
+        pub fn print(
+            _: *StdDebugWriter,
+            comptime fmt: []const u8,
+            args: anytype,
+        ) !void {
+            std.debug.print(fmt, args);
+        }
 
-    pub fn print(self: *StdDebugWriter, comptime fmt: []const u8, args: anytype) !void {
-        _ = fmt;
-        _ = args;
-        std.debug.print(fmt, args);
-    }
-
-    pub fn writeByte(self: *StdDebugWriter, b: u8) !void {
-        _ = b;
-        var buf: [1]u8 = .{b};
-        std.debug.print("{s}", .{buf[0..]});
-    }
+        pub fn writeByte(
+            _: *StdDebugWriter,
+            b: u8,
+        ) !void {
+            std.debug.print("{c}", .{b});
+        }
+    };
 
     pub fn printAllStd(self: *const Diagnostics) !void {
         var w = StdDebugWriter{};
