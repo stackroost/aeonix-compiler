@@ -74,6 +74,10 @@ pub const Diagnostics = struct {
     }
 
     pub fn deinit(self: *Diagnostics) void {
+        // Free all owned message strings
+        for (self.diagnostics.items) |diag| {
+            self.allocator.free(diag.message);
+        }
         self.diagnostics.deinit(self.allocator);
     }
 
@@ -83,9 +87,10 @@ pub const Diagnostics = struct {
         loc: SourceLoc,
         source: []const u8,
     ) !void {
+        const owned_message = try self.allocator.dupe(u8, message);
         try self.diagnostics.append(self.allocator, .{
             .level = .@"error",
-            .message = message,
+            .message = owned_message,
             .loc = loc,
             .source = source,
         });
@@ -97,9 +102,10 @@ pub const Diagnostics = struct {
         loc: SourceLoc,
         source: []const u8,
     ) !void {
+        const owned_message = try self.allocator.dupe(u8, message);
         try self.diagnostics.append(self.allocator, .{
             .level = .warning,
-            .message = message,
+            .message = owned_message,
             .loc = loc,
             .source = source,
         });

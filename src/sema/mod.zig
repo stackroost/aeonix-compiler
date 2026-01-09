@@ -1,10 +1,12 @@
 const std = @import("std");
 const ast = @import("../ast/unit.zig");
 const Diagnostics = @import("../diagnostics.zig").Diagnostics;
+const SectionValidator = @import("section.zig").SectionValidator;
 
 pub const ValidationError = error{
     EmptyUnitName,
     NoSections,
+    InvalidSection,
     MissingLicense,
     InvalidLicense,
     NoReturnOrInstructions,
@@ -23,22 +25,17 @@ pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []con
         return ValidationError.NoSections;
     }
 
-    // Validate section names (warn about unknown sections)
-    const valid_sections = [_][]const u8{ "xdp", "tc", "kprobe", "uprobe", "tracepoint", "socket", "cgroup" };
+    // Validate section names - invalid sections will cause load-time failures
     for (unit.sections) |section| {
-        var found = false;
-        for (valid_sections) |valid| {
-            if (std.mem.startsWith(u8, section, valid)) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            try diagnostics.reportWarning(
-                try std.fmt.allocPrint(diagnostics.allocator, "Unknown section name: '{s}'", .{section}),
-                unit.loc,
-                source,
+        if (!SectionValidator.isValid(section)) {
+            const msg = try std.fmt.allocPrint(
+                diagnostics.allocator,
+                "Invalid section name: '{s}'. Invalid section names will cause the program to fail at load time.",
+                .{section},
             );
+            try diagnostics.reportError(msg, unit.loc, source);
+            diagnostics.allocator.free(msg); // reportError now owns a copy
+            return ValidationError.InvalidSection;
         }
     }
 
@@ -60,8 +57,8 @@ pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []con
     }
     if (!license_valid) {
         const msg = try std.fmt.allocPrint(diagnostics.allocator, "Unknown license: '{s}'", .{license});
-        defer diagnostics.allocator.free(msg);
         try diagnostics.reportWarning(msg, unit.loc, source);
+        diagnostics.allocator.free(msg); // reportWarning now owns a copy
     }
 
     // Validate that unit has at least one return statement or instruction
