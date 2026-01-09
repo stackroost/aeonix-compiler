@@ -7,6 +7,7 @@ pub const ValidationError = error{
     NoSections,
     MissingLicense,
     InvalidLicense,
+    NoReturnOrInstructions,
 };
 
 pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []const u8) !void {
@@ -61,5 +62,11 @@ pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []con
         const msg = try std.fmt.allocPrint(diagnostics.allocator, "Unknown license: '{s}'", .{license});
         defer diagnostics.allocator.free(msg);
         try diagnostics.reportWarning(msg, unit.loc, source);
+    }
+
+    // Validate that unit has at least one return statement or instruction
+    if (unit.body.len == 0) {
+        try diagnostics.reportError("Unit must have at least one return statement or instruction", unit.loc, source);
+        return ValidationError.NoReturnOrInstructions;
     }
 }

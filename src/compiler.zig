@@ -4,7 +4,7 @@ const parser = @import("parser/mod.zig");
 const sema = @import("sema/mod.zig");
 const ir = @import("ir/unit.zig");
 const codegen = @import("codegen/ebpf/unit.zig");
-const ElfWriter = @import("elf/writer.zig").ElfWriter;
+const ElfWriter = @import("elf/writer.zig").LLVMElfWriter;
 const Diagnostics = @import("diagnostics.zig").Diagnostics;
 
 pub const CompileError = error{
@@ -25,7 +25,22 @@ pub fn compile(
     defer diagnostics.deinit();
 
     // Parse
-    var unit = try parser.parse(src, allocator);
+    const unit = parser.parse(src, allocator) catch |err| {
+        const SourceLoc = @import("parser/token.zig").SourceLoc;
+        switch (err) {
+            parser.ParseError.MultipleUnits => {
+                // Report error at end of file (where extra content would be)
+                const loc = SourceLoc.init(1, 1, src.len);
+                try diagnostics.reportError("File must contain exactly one unit block", loc, src);
+            },
+            else => {
+                const loc = SourceLoc.init(1, 1, 0);
+                try diagnostics.reportError("Parse error occurred", loc, src);
+            },
+        }
+        diagnostics.printAllStd() catch {};
+        return CompileError.CompilationFailed;
+    };
 
     // Semantic analysis
     sema.checkUnit(&unit, &diagnostics, src) catch {

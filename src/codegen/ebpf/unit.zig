@@ -1,5 +1,5 @@
 const ir = @import("../../ir/unit.zig");
-const ElfWriter = @import("../../elf/writer.zig").ElfWriter;
+const ElfWriter = @import("../../elf/writer.zig").LLVMElfWriter;
 
 pub fn emitUnit(
     writer: *ElfWriter,
@@ -8,15 +8,11 @@ pub fn emitUnit(
     sections: []const []const u8,
     license: ?[]const u8,
 ) !void {
-    try writer.emitLicense(license);
+    if (license) |lic| writer.emitLicense(lic);
 
     for (sections) |sec| {
-        try writer.beginProgram(sec, name);
-
-        // load return value into R0
+        writer.beginProgram(sec, name);
         try writer.emitLoadImm(0, unit_ir.return_value);
-
-        // exit
-        try writer.emitExit();
+        writer.emitExit();
     }
 }
