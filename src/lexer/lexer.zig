@@ -109,11 +109,7 @@ pub const Lexer = struct {
         const lexeme = self.src[start..self.index];
 
         // Check for keywords
-        const kind: TokenKind = if (std.mem.eql(u8, lexeme, "unit")) .keyword_unit
-        else if (std.mem.eql(u8, lexeme, "section")) .keyword_section
-        else if (std.mem.eql(u8, lexeme, "license")) .keyword_license
-        else if (std.mem.eql(u8, lexeme, "return")) .keyword_return
-        else .identifier;
+        const kind: TokenKind = if (std.mem.eql(u8, lexeme, "unit")) .keyword_unit else if (std.mem.eql(u8, lexeme, "section")) .keyword_section else if (std.mem.eql(u8, lexeme, "license")) .keyword_license else if (std.mem.eql(u8, lexeme, "return")) .keyword_return else if (std.mem.eql(u8, lexeme, "reg")) .keyword_reg else if (std.mem.eql(u8, lexeme, "imm")) .keyword_imm else .identifier;
 
         return Token{
             .kind = kind,
@@ -134,13 +130,45 @@ pub const Lexer = struct {
             self.advance();
         }
 
-        while (self.index < self.src.len) {
-            const ch = self.peek();
-            if (ch >= '0' and ch <= '9') {
-                value = value * 10 + @as(i64, ch - '0');
-                self.advance();
-            } else {
-                break;
+        // Check for hex literal (0x...)
+        if (self.index < self.src.len - 1 and self.src[self.index] == '0' and self.src[self.index + 1] == 'x') {
+            self.advance(); // consume '0'
+            self.advance(); // consume 'x'
+
+            // Parse hex digits
+            var has_digits = false;
+            while (self.index < self.src.len) {
+                const ch = self.peek();
+                if (ch >= '0' and ch <= '9') {
+                    value = value * 16 + @as(i64, ch - '0');
+                    has_digits = true;
+                    self.advance();
+                } else if (ch >= 'a' and ch <= 'f') {
+                    value = value * 16 + @as(i64, ch - 'a' + 10);
+                    has_digits = true;
+                    self.advance();
+                } else if (ch >= 'A' and ch <= 'F') {
+                    value = value * 16 + @as(i64, ch - 'A' + 10);
+                    has_digits = true;
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+
+            if (!has_digits) {
+                return error.InvalidCharacter;
+            }
+        } else {
+            // Parse decimal digits
+            while (self.index < self.src.len) {
+                const ch = self.peek();
+                if (ch >= '0' and ch <= '9') {
+                    value = value * 10 + @as(i64, ch - '0');
+                    self.advance();
+                } else {
+                    break;
+                }
             }
         }
 
@@ -254,7 +282,7 @@ pub const Lexer = struct {
                 self.advance();
                 return Token{
                     .kind = .l_brace,
-                    .lexeme = self.src[self.index - 1..self.index],
+                    .lexeme = self.src[self.index - 1 .. self.index],
                     .loc = loc,
                     .int_value = 0,
                 };
@@ -263,7 +291,16 @@ pub const Lexer = struct {
                 self.advance();
                 return Token{
                     .kind = .r_brace,
-                    .lexeme = self.src[self.index - 1..self.index],
+                    .lexeme = self.src[self.index - 1 .. self.index],
+                    .loc = loc,
+                    .int_value = 0,
+                };
+            },
+            '=' => {
+                self.advance();
+                return Token{
+                    .kind = .equals,
+                    .lexeme = self.src[self.index - 1 .. self.index],
                     .loc = loc,
                     .int_value = 0,
                 };

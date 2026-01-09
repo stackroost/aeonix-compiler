@@ -23,5 +23,11 @@ pub const Stmt = struct {
 
 pub const StmtKind = union(enum) {
     Return: i64,
-    // Reg, State, Guard later
+    VarDecl: VarDecl,
+};
+
+pub const VarDecl = struct {
+    name: []const u8,
+    is_mutable: bool, // true for reg, false for imm
+    value: i64,
 };

@@ -11,6 +11,11 @@ pub fn lowerUnit(u: *const @import("../ast/unit.zig").Unit) IRUnit {
             .Return => |v| {
                 return IRUnit{ .return_value = v };
             },
+            .VarDecl => {
+                // Variable declarations are handled during codegen
+                // For now, we just skip them in IR lowering
+                continue;
+            },
         }
     }
 
