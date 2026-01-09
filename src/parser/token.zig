@@ -20,10 +20,13 @@ pub const TokenKind = enum {
     keyword_section,
     keyword_license,
     keyword_return,
+    keyword_reg,
+    keyword_imm,
 
     // punctuation
     l_brace,
     r_brace,
+    equals,
 
     // literals
     identifier,

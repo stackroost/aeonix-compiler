@@ -18,8 +18,7 @@ pub fn parseUnit(self: *Parser) Parser.ParseError!ast.Unit {
         if (self.match(.keyword_section)) {
             const s = try self.expect(.string_literal);
             const content =
-                if (s.lexeme.len >= 2) s.lexeme[1 .. s.lexeme.len - 1]
-                else "";
+                if (s.lexeme.len >= 2) s.lexeme[1 .. s.lexeme.len - 1] else "";
             try sections.append(
                 self.allocator,
                 try self.allocator.dupe(u8, content),
@@ -30,9 +29,44 @@ pub fn parseUnit(self: *Parser) Parser.ParseError!ast.Unit {
         if (self.match(.keyword_license)) {
             const l = try self.expect(.string_literal);
             const content =
-                if (l.lexeme.len >= 2) l.lexeme[1 .. l.lexeme.len - 1]
-                else "";
+                if (l.lexeme.len >= 2) l.lexeme[1 .. l.lexeme.len - 1] else "";
             license = try self.allocator.dupe(u8, content);
+            continue;
+        }
+
+        if (self.match(.keyword_reg)) {
+            const var_loc = self.current.loc;
+            const var_name_tok = try self.expect(.identifier);
+            _ = try self.expect(.equals);
+            const value_tok = try self.expect(.number);
+            try body.append(self.allocator, .{
+                .kind = .{
+                    .VarDecl = .{
+                        .name = try self.allocator.dupe(u8, var_name_tok.lexeme),
+                        .is_mutable = true,
+                        .value = value_tok.int_value,
+                    },
+                },
+                .loc = var_loc,
+            });
+            continue;
+        }
+
+        if (self.match(.keyword_imm)) {
+            const var_loc = self.current.loc;
+            const var_name_tok = try self.expect(.identifier);
+            _ = try self.expect(.equals);
+            const value_tok = try self.expect(.number);
+            try body.append(self.allocator, .{
+                .kind = .{
+                    .VarDecl = .{
+                        .name = try self.allocator.dupe(u8, var_name_tok.lexeme),
+                        .is_mutable = false,
+                        .value = value_tok.int_value,
+                    },
+                },
+                .loc = var_loc,
+            });
             continue;
         }
 
