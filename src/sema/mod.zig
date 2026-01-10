@@ -66,4 +66,8 @@ pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []con
         try diagnostics.reportError("Unit must have at least one return statement or instruction", unit.loc, source);
         return ValidationError.NoReturnOrInstructions;
     }
+
+    // Heap variable safety checking
+    const unit_sema = @import("unit.zig");
+    _ = unit_sema.checkUnit(unit, diagnostics);
 }

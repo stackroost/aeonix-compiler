@@ -27,6 +27,9 @@ pub const TokenKind = enum {
     keyword_key,
     keyword_value,
     keyword_max,
+    keyword_if,
+    keyword_guard,
+    keyword_heap,
 
     // map types
     map_type_hash,
@@ -44,9 +47,12 @@ pub const TokenKind = enum {
     // punctuation
     l_brace,
     r_brace,
+    l_paren,
+    r_paren,
     equals,
     colon,
     dot,
+    star,
 
     // literals
     identifier,

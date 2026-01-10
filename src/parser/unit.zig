@@ -3,6 +3,137 @@ const std = @import("std");
 const ast = @import("../ast/unit.zig");
 const Parser = @import("parser.zig").Parser;
 
+fn parseStmt(self: *Parser, body: *std.ArrayList(ast.Stmt)) Parser.ParseError!void {
+    if (self.match(.keyword_reg)) {
+        const var_loc = self.current.loc;
+        const var_name_tok = try self.expect(.identifier);
+        _ = try self.expect(.equals);
+        const value_tok = try self.expect(.number);
+        try body.append(self.allocator, .{
+            .kind = .{
+                .VarDecl = .{
+                    .name = try self.allocator.dupe(u8, var_name_tok.lexeme),
+                    .var_type = .reg,
+                    .value = value_tok.int_value,
+                },
+            },
+            .loc = var_loc,
+        });
+        return;
+    }
+
+    if (self.match(.keyword_imm)) {
+        const var_loc = self.current.loc;
+        const var_name_tok = try self.expect(.identifier);
+        _ = try self.expect(.equals);
+        const value_tok = try self.expect(.number);
+        try body.append(self.allocator, .{
+            .kind = .{
+                .VarDecl = .{
+                    .name = try self.allocator.dupe(u8, var_name_tok.lexeme),
+                    .var_type = .imm,
+                    .value = value_tok.int_value,
+                },
+            },
+            .loc = var_loc,
+        });
+        return;
+    }
+
+    if (self.match(.keyword_heap)) {
+        const var_loc = self.current.loc;
+        const var_name_tok = try self.expect(.identifier);
+        _ = try self.expect(.equals);
+
+        // Parse map.lookup(key) expression
+        const map_name_tok = try self.expect(.identifier);
+        _ = try self.expect(.dot);
+        const lookup_tok = try self.expect(.identifier); // "lookup" keyword
+        if (!std.mem.eql(u8, lookup_tok.lexeme, "lookup")) {
+            return self.parseError("expected 'lookup' after map name");
+        }
+        _ = try self.expect(.l_paren);
+        const key_expr = try self.parseExpr();
+        _ = try self.expect(.r_paren);
+
+        try body.append(self.allocator, .{
+            .kind = .{
+                .HeapVarDecl = .{
+                    .name = try self.allocator.dupe(u8, var_name_tok.lexeme),
+                    .lookup = .{
+                        .map_name = try self.allocator.dupe(u8, map_name_tok.lexeme),
+                        .key_expr = key_expr,
+                    },
+                },
+            },
+            .loc = var_loc,
+        });
+        return;
+    }
+
+    if (self.match(.keyword_return)) {
+        const return_loc = self.current.loc;
+        const v = try self.expect(.number);
+        try body.append(self.allocator, .{
+            .kind = .{ .Return = v.int_value },
+            .loc = return_loc,
+        });
+        return;
+    }
+
+    if (self.match(.keyword_if)) {
+        const if_loc = self.current.loc;
+        _ = try self.expect(.keyword_guard);
+        _ = try self.expect(.l_paren);
+        const var_name_tok = try self.expect(.identifier);
+        _ = try self.expect(.r_paren);
+        _ = try self.expect(.l_brace);
+
+        var guard_body = try std.ArrayList(ast.Stmt).initCapacity(self.allocator, 4);
+        while (!self.match(.r_brace)) {
+            try parseStmt(self, &guard_body);
+        }
+
+        try body.append(self.allocator, .{
+            .kind = .{
+                .IfGuard = .{
+                    .condition = .{
+                        .kind = .{ .VarRef = try self.allocator.dupe(u8, var_name_tok.lexeme) },
+                        .loc = var_name_tok.loc,
+                    },
+                    .body = try guard_body.toOwnedSlice(self.allocator),
+                },
+            },
+            .loc = if_loc,
+        });
+        return;
+    }
+
+    return self.parseError("unexpected token in statement");
+}
+
+pub fn parseExpr(self: *Parser) Parser.ParseError!*ast.Expr {
+    // Check for dereference operator
+    if (self.match(.star)) {
+        const inner_expr = try self.parseExpr();
+        const expr = try self.allocator.create(ast.Expr);
+        expr.* = .{
+            .kind = .{ .Dereference = inner_expr },
+            .loc = inner_expr.loc,
+        };
+        return expr;
+    }
+
+    // Variable reference
+    const var_tok = try self.expect(.identifier);
+    const expr = try self.allocator.create(ast.Expr);
+    expr.* = .{
+        .kind = .{ .VarRef = try self.allocator.dupe(u8, var_tok.lexeme) },
+        .loc = var_tok.loc,
+    };
+    return expr;
+}
+
 pub fn parseUnit(self: *Parser) Parser.ParseError!ast.Unit {
     const unit_loc = self.current.loc;
     _ = try self.expect(.keyword_unit);
@@ -117,53 +248,13 @@ pub fn parseUnit(self: *Parser) Parser.ParseError!ast.Unit {
             continue;
         }
 
-        if (self.match(.keyword_reg)) {
-            const var_loc = self.current.loc;
-            const var_name_tok = try self.expect(.identifier);
-            _ = try self.expect(.equals);
-            const value_tok = try self.expect(.number);
-            try body.append(self.allocator, .{
-                .kind = .{
-                    .VarDecl = .{
-                        .name = try self.allocator.dupe(u8, var_name_tok.lexeme),
-                        .is_mutable = true,
-                        .value = value_tok.int_value,
-                    },
-                },
-                .loc = var_loc,
-            });
-            continue;
-        }
-
-        if (self.match(.keyword_imm)) {
-            const var_loc = self.current.loc;
-            const var_name_tok = try self.expect(.identifier);
-            _ = try self.expect(.equals);
-            const value_tok = try self.expect(.number);
-            try body.append(self.allocator, .{
-                .kind = .{
-                    .VarDecl = .{
-                        .name = try self.allocator.dupe(u8, var_name_tok.lexeme),
-                        .is_mutable = false,
-                        .value = value_tok.int_value,
-                    },
-                },
-                .loc = var_loc,
-            });
-            continue;
-        }
-
-        if (self.match(.keyword_return)) {
-            const return_loc = self.current.loc;
-            const v = try self.expect(.number);
-            try body.append(self.allocator, .{
-                .kind = .{ .Return = v.int_value },
-                .loc = return_loc,
-            });
-            continue;
-        }
-
-        return self.parseError("unexpected token in unit");
+        // Parse statements (including guard statements)
+        parseStmt(self, &body) catch |err| {
+            if (err == error.ParseError) {
+                return self.parseError("unexpected token in unit");
+            }
+            return err;
+        };
     }
 
     return ast.Unit{

@@ -27,12 +27,36 @@ pub const Stmt = struct {
 pub const StmtKind = union(enum) {
     Return: i64,
     VarDecl: VarDecl,
+    HeapVarDecl: HeapVarDecl,
+    IfGuard: IfGuard,
+};
+
+pub const IfGuard = struct {
+    condition: Expr,
+    body: []Stmt,
+};
+
+pub const Expr = struct {
+    kind: ExprKind,
+    loc: SourceLoc,
+};
+
+pub const ExprKind = union(enum) {
+    VarRef: []const u8, // Variable reference (e.g., "val")
+    HeapLookup: HeapLookup, // Map lookup (e.g., "map.lookup(key)")
+    Dereference: *Expr, // Pointer dereference (e.g., "*ptr")
+    // More expression types can be added later
 };
 
 pub const VarDecl = struct {
     name: []const u8,
-    is_mutable: bool, // true for reg, false for imm
+    var_type: VarType,
     value: i64,
+};
+
+pub const VarType = enum {
+    reg, // mutable register variable
+    imm, // immutable immediate variable
 };
 
 pub const MapDecl = struct {
@@ -57,4 +81,14 @@ pub const Type = enum {
     u64,
     i32,
     i64,
+};
+
+pub const HeapLookup = struct {
+    map_name: []const u8,
+    key_expr: *Expr,
+};
+
+pub const HeapVarDecl = struct {
+    name: []const u8,
+    lookup: HeapLookup,
 };
