@@ -97,6 +97,30 @@ pub const Lexer = struct {
         const start = self.index;
         const loc = self.currentLoc();
 
+        // Check if it starts with a dot (for map types like .hash)
+        if (self.peek() == '.') {
+            self.advance();
+            while (self.index < self.src.len) {
+                const ch = self.peek();
+                if ((ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or (ch >= '0' and ch <= '9') or ch == '_') {
+                    self.advance();
+                } else {
+                    break;
+                }
+            }
+            const lexeme = self.src[start..self.index];
+
+            // Check for map types
+            const kind: TokenKind = if (std.mem.eql(u8, lexeme, ".hash")) .map_type_hash else if (std.mem.eql(u8, lexeme, ".array")) .map_type_array else if (std.mem.eql(u8, lexeme, ".ringbuf")) .map_type_ringbuf else if (std.mem.eql(u8, lexeme, ".lru_hash")) .map_type_lru_hash else if (std.mem.eql(u8, lexeme, ".prog_array")) .map_type_prog_array else .identifier;
+
+            return Token{
+                .kind = kind,
+                .lexeme = lexeme,
+                .loc = loc,
+                .int_value = 0,
+            };
+        }
+
         while (self.index < self.src.len) {
             const ch = self.peek();
             if ((ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or (ch >= '0' and ch <= '9') or ch == '_') {
@@ -109,7 +133,7 @@ pub const Lexer = struct {
         const lexeme = self.src[start..self.index];
 
         // Check for keywords
-        const kind: TokenKind = if (std.mem.eql(u8, lexeme, "unit")) .keyword_unit else if (std.mem.eql(u8, lexeme, "section")) .keyword_section else if (std.mem.eql(u8, lexeme, "license")) .keyword_license else if (std.mem.eql(u8, lexeme, "return")) .keyword_return else if (std.mem.eql(u8, lexeme, "reg")) .keyword_reg else if (std.mem.eql(u8, lexeme, "imm")) .keyword_imm else .identifier;
+        const kind: TokenKind = if (std.mem.eql(u8, lexeme, "unit")) .keyword_unit else if (std.mem.eql(u8, lexeme, "section")) .keyword_section else if (std.mem.eql(u8, lexeme, "license")) .keyword_license else if (std.mem.eql(u8, lexeme, "return")) .keyword_return else if (std.mem.eql(u8, lexeme, "reg")) .keyword_reg else if (std.mem.eql(u8, lexeme, "imm")) .keyword_imm else if (std.mem.eql(u8, lexeme, "map")) .keyword_map else if (std.mem.eql(u8, lexeme, "type")) .keyword_type else if (std.mem.eql(u8, lexeme, "key")) .keyword_key else if (std.mem.eql(u8, lexeme, "value")) .keyword_value else if (std.mem.eql(u8, lexeme, "max")) .keyword_max else if (std.mem.eql(u8, lexeme, "u32")) .type_u32 else if (std.mem.eql(u8, lexeme, "u64")) .type_u64 else if (std.mem.eql(u8, lexeme, "i32")) .type_i32 else if (std.mem.eql(u8, lexeme, "i64")) .type_i64 else .identifier;
 
         return Token{
             .kind = kind,
@@ -261,6 +285,14 @@ pub const Lexer = struct {
         const loc = self.currentLoc();
         const ch = self.peek();
 
+        // Check for dot-prefixed identifiers (map types like .hash)
+        if (ch == '.' and self.index + 1 < self.src.len) {
+            const next_ch = self.src[self.index + 1];
+            if ((next_ch >= 'a' and next_ch <= 'z') or (next_ch >= 'A' and next_ch <= 'Z') or next_ch == '_') {
+                return self.readIdentifier();
+            }
+        }
+
         // Identifiers and keywords
         if ((ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or ch == '_') {
             return self.readIdentifier();
@@ -300,6 +332,15 @@ pub const Lexer = struct {
                 self.advance();
                 return Token{
                     .kind = .equals,
+                    .lexeme = self.src[self.index - 1 .. self.index],
+                    .loc = loc,
+                    .int_value = 0,
+                };
+            },
+            ':' => {
+                self.advance();
+                return Token{
+                    .kind = .colon,
                     .lexeme = self.src[self.index - 1 .. self.index],
                     .loc = loc,
                     .int_value = 0,
