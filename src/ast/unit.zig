@@ -11,6 +11,9 @@ pub const Unit = struct {
     /// ELF license (default filled in sema)
     license: ?[]const u8,
 
+    /// BPF maps (persistent kernel storage)
+    maps: []MapDecl,
+
     /// Body statements
     body: []Stmt,
 };
@@ -30,4 +33,28 @@ pub const VarDecl = struct {
     name: []const u8,
     is_mutable: bool, // true for reg, false for imm
     value: i64,
+};
+
+pub const MapDecl = struct {
+    name: []const u8,
+    map_type: MapType,
+    key_type: Type,
+    value_type: Type,
+    max_entries: u32,
+    loc: SourceLoc,
+};
+
+pub const MapType = enum {
+    hash,
+    array,
+    ringbuf,
+    lru_hash,
+    prog_array,
+};
+
+pub const Type = enum {
+    u32,
+    u64,
+    i32,
+    i64,
 };
