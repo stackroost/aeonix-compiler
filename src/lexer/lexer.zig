@@ -133,7 +133,7 @@ pub const Lexer = struct {
         const lexeme = self.src[start..self.index];
 
         // Check for keywords
-        const kind: TokenKind = if (std.mem.eql(u8, lexeme, "unit")) .keyword_unit else if (std.mem.eql(u8, lexeme, "section")) .keyword_section else if (std.mem.eql(u8, lexeme, "license")) .keyword_license else if (std.mem.eql(u8, lexeme, "return")) .keyword_return else if (std.mem.eql(u8, lexeme, "reg")) .keyword_reg else if (std.mem.eql(u8, lexeme, "imm")) .keyword_imm else if (std.mem.eql(u8, lexeme, "map")) .keyword_map else if (std.mem.eql(u8, lexeme, "type")) .keyword_type else if (std.mem.eql(u8, lexeme, "key")) .keyword_key else if (std.mem.eql(u8, lexeme, "value")) .keyword_value else if (std.mem.eql(u8, lexeme, "max")) .keyword_max else if (std.mem.eql(u8, lexeme, "u32")) .type_u32 else if (std.mem.eql(u8, lexeme, "u64")) .type_u64 else if (std.mem.eql(u8, lexeme, "i32")) .type_i32 else if (std.mem.eql(u8, lexeme, "i64")) .type_i64 else .identifier;
+        const kind: TokenKind = if (std.mem.eql(u8, lexeme, "unit")) .keyword_unit else if (std.mem.eql(u8, lexeme, "section")) .keyword_section else if (std.mem.eql(u8, lexeme, "license")) .keyword_license else if (std.mem.eql(u8, lexeme, "return")) .keyword_return else if (std.mem.eql(u8, lexeme, "reg")) .keyword_reg else if (std.mem.eql(u8, lexeme, "imm")) .keyword_imm else if (std.mem.eql(u8, lexeme, "map")) .keyword_map else if (std.mem.eql(u8, lexeme, "type")) .keyword_type else if (std.mem.eql(u8, lexeme, "key")) .keyword_key else if (std.mem.eql(u8, lexeme, "value")) .keyword_value else if (std.mem.eql(u8, lexeme, "max")) .keyword_max else if (std.mem.eql(u8, lexeme, "if")) .keyword_if else if (std.mem.eql(u8, lexeme, "guard")) .keyword_guard else if (std.mem.eql(u8, lexeme, "heap")) .keyword_heap else if (std.mem.eql(u8, lexeme, "u32")) .type_u32 else if (std.mem.eql(u8, lexeme, "u64")) .type_u64 else if (std.mem.eql(u8, lexeme, "i32")) .type_i32 else if (std.mem.eql(u8, lexeme, "i64")) .type_i64 else .identifier;
 
         return Token{
             .kind = kind,
@@ -341,6 +341,42 @@ pub const Lexer = struct {
                 self.advance();
                 return Token{
                     .kind = .colon,
+                    .lexeme = self.src[self.index - 1 .. self.index],
+                    .loc = loc,
+                    .int_value = 0,
+                };
+            },
+            '(' => {
+                self.advance();
+                return Token{
+                    .kind = .l_paren,
+                    .lexeme = self.src[self.index - 1 .. self.index],
+                    .loc = loc,
+                    .int_value = 0,
+                };
+            },
+            ')' => {
+                self.advance();
+                return Token{
+                    .kind = .r_paren,
+                    .lexeme = self.src[self.index - 1 .. self.index],
+                    .loc = loc,
+                    .int_value = 0,
+                };
+            },
+            '.' => {
+                self.advance();
+                return Token{
+                    .kind = .dot,
+                    .lexeme = self.src[self.index - 1 .. self.index],
+                    .loc = loc,
+                    .int_value = 0,
+                };
+            },
+            '*' => {
+                self.advance();
+                return Token{
+                    .kind = .star,
                     .lexeme = self.src[self.index - 1 .. self.index],
                     .loc = loc,
                     .int_value = 0,

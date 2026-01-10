@@ -67,4 +67,9 @@ pub const Parser = struct {
         const unit_parser = @import("unit.zig");
         return unit_parser.parseUnit(self);
     }
+
+    pub fn parseExpr(self: *Parser) ParseError!*ast.Expr {
+        const unit_parser = @import("unit.zig");
+        return unit_parser.parseExpr(self);
+    }
 };

@@ -16,6 +16,17 @@ pub fn lowerUnit(u: *const @import("../ast/unit.zig").Unit) IRUnit {
                 // For now, we just skip them in IR lowering
                 continue;
             },
+            .IfGuard => {
+                // Guard statements are handled during codegen
+                // For now, we just skip them in IR lowering
+                // The guard body will be processed recursively if needed
+                continue;
+            },
+            .HeapVarDecl => {
+                // Heap variable declarations are handled during codegen
+                // For now, we just skip them in IR lowering
+                continue;
+            },
         }
     }
 
