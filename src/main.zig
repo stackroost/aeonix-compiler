@@ -4,7 +4,11 @@ const compiler = @import("compiler.zig");
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+
+    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
+    defer arena.deinit();
+
+   const allocator = arena.allocator();
 
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
@@ -25,6 +29,8 @@ pub fn main() !void {
         std.process.exit(1);
     };
     defer file.close();
+
+    
 
     const src = try file.readToEndAlloc(allocator, std.math.maxInt(usize));
     defer allocator.free(src);
