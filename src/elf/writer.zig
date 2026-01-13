@@ -2,6 +2,7 @@ const std = @import("std");
 
 const tc = @import("./section/tc.zig");
 const xdp = @import("./section/xdp.zig");
+const tp = @import("./section/tracepoint.zig");
 
 const llvm = @import("../llvm.zig").c;
 
@@ -68,18 +69,20 @@ pub const LLVMElfWriter = struct {
     }
 
     pub fn isSectionSupported(_: *LLVMElfWriter, section: []const u8) bool {
-        return tc.supports(section) or xdp.supports(section);
+        return tc.supports(section) or
+            xdp.supports(section) or
+            tp.supports(section);
     }
 
     pub fn beginProgram(self: *LLVMElfWriter, section: []const u8, name: []const u8) !void {
         self.function = null;
-
+        
         if (tc.supports(section)) {
             return tc.beginProgram(self, section, name);
-        }
-
-        if (xdp.supports(section)) {
+        } else if (xdp.supports(section)) {
             return xdp.beginProgram(self, section, name);
+        } else if (tp.supports(section)) {
+            return tp.beginProgram(self, section, name);
         }
 
         return Error.UnsupportedSection;
