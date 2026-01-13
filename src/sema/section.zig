@@ -5,6 +5,12 @@ pub const SectionValidator = struct {
         const static_sections = [_][]const u8{
             "xdp",
             "xdp/ingress",
+            "xdp/frags",
+            "xdp/devmap",
+            "xdp/cpumap",
+            "xdp/offload",
+            "xdp/egress",
+
             "tc",
             "classifier",
             "action",
@@ -12,13 +18,14 @@ pub const SectionValidator = struct {
             "tcx/egress",
             "tc/ingress",
             "tc/egress",
+            
             "cgroup_skb",
             "cgroup_sock",
             "cgroup_skb/ingress",
             "cgroup_skb/egress",
             "sockops",
             "sk_msg",
-            
+
             "maps",
             "license",
             "version",
@@ -30,7 +37,7 @@ pub const SectionValidator = struct {
         for (static_sections) |valid| {
             if (std.mem.eql(u8, section, valid)) return true;
         }
-        
+
         if (std.mem.startsWith(u8, section, "tc/")) {
             const extras = section["tc/".len..];
             return extras.len > 0 and isValidTcExtras(extras);
@@ -87,7 +94,7 @@ pub const SectionValidator = struct {
                 (ch >= 'a' and ch <= 'z') or
                 (ch >= 'A' and ch <= 'Z') or
                 (ch >= '0' and ch <= '9') or
-                ch == '_' or ch == '.' or ch == '-' ;
+                ch == '_' or ch == '.' or ch == '-';
             if (!ok) return false;
         }
         return true;
@@ -119,7 +126,7 @@ pub const SectionValidator = struct {
     }
 
     pub fn getValidFormats() []const u8 {
-        return
+        return 
         \\Valid eBPF section formats (selected):
         \\  TC:
         \\    - tc, classifier, action
