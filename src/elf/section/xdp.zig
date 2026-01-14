@@ -3,13 +3,13 @@ const std = @import("std");
 const llvm = @import("../../llvm.zig").c;
 
 pub const XdpKind = enum {
-    Xdp,        // "xdp"
-    Ingress,    // "xdp/ingress"
-    Egress,     // "xdp/egress"
-    Frags,      // "xdp/frags"
-    Devmap,     // "xdp/devmap"
-    Cpumap,     // "xdp/cpumap"
-    Offload,    // "xdp/offload"
+    Xdp,        
+    Ingress,    
+    Egress,     
+    Frags,      
+    Devmap,     
+    Cpumap,     
+    Offload,    
 };
 
 pub fn supports(section: []const u8) bool {
@@ -40,7 +40,7 @@ pub fn beginProgram(ctx: anytype, section: []const u8, name: []const u8) !void {
 }
 
 fn resolveXdpKind(section: []const u8) ?XdpKind {
-    // exact
+    
     if (std.mem.eql(u8, section, "xdp"))
         return .Xdp;
 
@@ -83,7 +83,7 @@ fn resolveXdpKind(section: []const u8) ?XdpKind {
 fn isValidXdpExtras(extras: []const u8) bool {
     if (extras.len == 0) return false;
 
-    // conservative token set: [A-Za-z0-9._-]+ (same as tc.zig)
+    
     for (extras) |ch| {
         const ok =
             (ch >= 'a' and ch <= 'z') or

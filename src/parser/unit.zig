@@ -1,4 +1,3 @@
-// parser/unit.zig
 const std = @import("std");
 const ast = @import("../ast/unit.zig");
 const Parser = @import("parser.zig").Parser;
@@ -44,11 +43,10 @@ fn parseStmt(self: *Parser, body: *std.ArrayList(ast.Stmt)) Parser.ParseError!vo
         const var_loc = self.current.loc;
         const var_name_tok = try self.expect(.identifier);
         _ = try self.expect(.equals);
-
-        // Parse map.lookup(key) expression
+        
         const map_name_tok = try self.expect(.identifier);
         _ = try self.expect(.dot);
-        const lookup_tok = try self.expect(.identifier); // "lookup" keyword
+        const lookup_tok = try self.expect(.identifier); 
         if (!std.mem.eql(u8, lookup_tok.lexeme, "lookup")) {
             return self.parseError("expected 'lookup' after map name");
         }
@@ -108,12 +106,10 @@ fn parseStmt(self: *Parser, body: *std.ArrayList(ast.Stmt)) Parser.ParseError!vo
         });
         return;
     }
-
     return self.parseError("unexpected token in statement");
 }
 
 pub fn parseExpr(self: *Parser) Parser.ParseError!*ast.Expr {
-    // Check for dereference operator
     if (self.match(.star)) {
         const inner_expr = try self.parseExpr();
         const expr = try self.allocator.create(ast.Expr);
@@ -123,8 +119,6 @@ pub fn parseExpr(self: *Parser) Parser.ParseError!*ast.Expr {
         };
         return expr;
     }
-
-    // Variable reference
     const var_tok = try self.expect(.identifier);
     const expr = try self.allocator.create(ast.Expr);
     expr.* = .{
@@ -132,6 +126,87 @@ pub fn parseExpr(self: *Parser) Parser.ParseError!*ast.Expr {
         .loc = var_tok.loc,
     };
     return expr;
+}
+
+pub fn parseMap(self: *Parser) Parser.ParseError!ast.MapDecl {
+    const map_loc = self.current.loc;
+    const map_name_tok = try self.expect(.identifier);
+    _ = try self.expect(.l_brace);
+
+    var map_type: ?ast.MapType = null;
+    var key_type: ?ast.Type = null;
+    var value_type: ?ast.Type = null;
+    var max_entries: ?u32 = null;
+
+    while (!self.match(.r_brace)) {
+        if (self.match(.keyword_type)) {
+            _ = try self.expect(.colon);
+            const type_tok = self.current;
+            map_type = switch (type_tok.kind) {
+                .map_type_hash => ast.MapType.hash,
+                .map_type_array => ast.MapType.array,
+                .map_type_ringbuf => ast.MapType.ringbuf,
+                .map_type_lru_hash => ast.MapType.lru_hash,
+                .map_type_prog_array => ast.MapType.prog_array,
+                else => return self.parseError("expected map type"),
+            };
+            _ = try self.advance();
+            continue;
+        }
+
+        if (self.match(.keyword_key)) {
+            _ = try self.expect(.colon);
+            const type_tok = self.current;
+            key_type = switch (type_tok.kind) {
+                .type_u32 => ast.Type.u32,
+                .type_u64 => ast.Type.u64,
+                .type_i32 => ast.Type.i32,
+                .type_i64 => ast.Type.i64,
+                else => return self.parseError("expected type for key"),
+            };
+            _ = try self.advance();
+            continue;
+        }
+
+        if (self.match(.keyword_value)) {
+            _ = try self.expect(.colon);
+            const type_tok = self.current;
+            value_type = switch (type_tok.kind) {
+                .type_u32 => ast.Type.u32,
+                .type_u64 => ast.Type.u64,
+                .type_i32 => ast.Type.i32,
+                .type_i64 => ast.Type.i64,
+                else => return self.parseError("expected type for value"),
+            };
+            _ = try self.advance();
+            continue;
+        }
+
+        if (self.match(.keyword_max)) {
+            _ = try self.expect(.colon);
+            const max_tok = try self.expect(.number);
+            if (max_tok.int_value < 0) {
+                return self.parseError("max_entries must be non-negative");
+            }
+            max_entries = @as(u32, @intCast(max_tok.int_value));
+            continue;
+        }
+
+        return self.parseError("unexpected token in map declaration");
+    }
+
+    if (map_type == null or key_type == null or value_type == null or max_entries == null) {
+        return self.parseError("map declaration missing required fields (type, key, value, max)");
+    }
+
+    return ast.MapDecl{
+        .name = try self.allocator.dupe(u8, map_name_tok.lexeme),
+        .map_type = map_type.?,
+        .key_type = key_type.?,
+        .value_type = value_type.?,
+        .max_entries = max_entries.?,
+        .loc = map_loc,
+    };
 }
 
 pub fn parseUnit(self: *Parser) Parser.ParseError!ast.Unit {
@@ -247,8 +322,6 @@ pub fn parseUnit(self: *Parser) Parser.ParseError!ast.Unit {
             });
             continue;
         }
-
-        // Parse statements (including guard statements)
         parseStmt(self, &body) catch |err| {
             if (err == error.ParseError) {
                 return self.parseError("unexpected token in unit");

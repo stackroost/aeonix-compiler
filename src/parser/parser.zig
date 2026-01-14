@@ -41,7 +41,7 @@ pub const Parser = struct {
 
     pub fn match(self: *Parser, kind: TokenKind) bool {
         if (self.current.kind == kind) {
-            _ = self.advance() catch {}; // swallow error here as you already do
+            _ = self.advance() catch {}; 
             return true;
         }
         return false;
@@ -59,7 +59,7 @@ pub const Parser = struct {
     pub fn parseError(self: *Parser, msg: []const u8) ParseError {
         _ = self;
         _ = msg;
-        // (optional) record msg somewhere / print it, etc.
+        
         return error.ParseError;
     }
 
@@ -71,5 +71,10 @@ pub const Parser = struct {
     pub fn parseExpr(self: *Parser) ParseError!*ast.Expr {
         const unit_parser = @import("unit.zig");
         return unit_parser.parseExpr(self);
+    }
+
+    pub fn parseMap(self: *Parser) ParseError!ast.MapDecl {
+        const unit_parser = @import("unit.zig");
+        return unit_parser.parseMap(self);
     }
 };

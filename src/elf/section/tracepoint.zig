@@ -2,9 +2,9 @@ const std = @import("std");
 const llvm = @import("../../llvm.zig").c;
 
 pub const TracepointKind = enum {
-    Standard,     // "tracepoint/" or "tp/"
-    Raw,          // "raw_tracepoint/" or "raw_tp/"
-    Btf,          // "tp_btf/"
+    Standard,     
+    Raw,          
+    Btf,          
 };
 
 pub fn supports(section: []const u8) bool {
@@ -19,8 +19,8 @@ pub fn beginProgram(ctx: anytype, section: []const u8, name: []const u8) !void {
 
     const i32_ty = llvm.LLVMInt32TypeInContext(ctx.context);
     
-    // For Tracepoints, the context is a pointer to the trace event data structure.
-    // In LLVM BPF, we treat this as a pointer to i8 (opaque blob) or i64 for raw_tp.
+    
+    
     const context_ty = if (kind == .Raw) 
         llvm.LLVMInt64TypeInContext(ctx.context) 
     else 

@@ -74,7 +74,7 @@ pub const Diagnostics = struct {
     }
 
     pub fn deinit(self: *Diagnostics) void {
-        // Free all owned message strings
+        
         for (self.diagnostics.items) |diag| {
             self.allocator.free(diag.message);
         }

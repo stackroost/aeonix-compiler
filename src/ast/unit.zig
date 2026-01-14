@@ -1,24 +1,29 @@
 const std = @import("std");
 const SourceLoc = @import("../parser/token.zig").SourceLoc;
 
+pub const Program = struct {
+    maps: []MapDecl,
+    units: []Unit,
+};
+
 pub const Unit = struct {
     name: []const u8,
     loc: SourceLoc,
 
-    /// Kernel attach points
+    
     sections: []const []const u8,
 
-    /// ELF license (default filled in sema)
+    
     license: ?[]const u8,
 
-    /// BPF maps (persistent kernel storage)
+    
     maps: []MapDecl,
 
-    /// Body statements
+    
     body: []Stmt,
 };
 
-/// Placeholder until full stmt system
+
 pub const Stmt = struct {
     kind: StmtKind,
     loc: SourceLoc,
@@ -42,10 +47,10 @@ pub const Expr = struct {
 };
 
 pub const ExprKind = union(enum) {
-    VarRef: []const u8, // Variable reference (e.g., "val")
-    HeapLookup: HeapLookup, // Map lookup (e.g., "map.lookup(key)")
-    Dereference: *Expr, // Pointer dereference (e.g., "*ptr")
-    // More expression types can be added later
+    VarRef: []const u8, 
+    HeapLookup: HeapLookup, 
+    Dereference: *Expr, 
+    
 };
 
 pub const VarDecl = struct {
@@ -55,8 +60,8 @@ pub const VarDecl = struct {
 };
 
 pub const VarType = enum {
-    reg, // mutable register variable
-    imm, // immutable immediate variable
+    reg, 
+    imm, 
 };
 
 pub const MapDecl = struct {
@@ -74,6 +79,7 @@ pub const MapType = enum {
     ringbuf,
     lru_hash,
     prog_array,
+    perf_event_array,
 };
 
 pub const Type = enum {

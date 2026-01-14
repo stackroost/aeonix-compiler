@@ -2,10 +2,10 @@ const std = @import("std");
 const llvm = @import("../../llvm.zig").c;
 
 pub const CgroupKind = enum {
-    Skb,     // "cgroup_skb", "cgroup_skb/ingress", "cgroup_skb/egress"
-    Sock,    // "cgroup_sock"
-    SockOps, // "sockops"
-    SkMsg,   // "sk_msg"
+    Skb,     
+    Sock,    
+    SockOps, 
+    SkMsg,   
 };
 
 pub fn supports(section: []const u8) bool {
@@ -20,7 +20,7 @@ pub fn beginProgram(ctx: anytype, section: []const u8, name: []const u8) !void {
 
     const i32_ty = llvm.LLVMInt32TypeInContext(ctx.context);
 
-    // Map the BPF program kind to the correct LLVM context struct name
+    
     const ctx_struct_name = switch (kind) {
         .Skb => "struct __sk_buff",
         .Sock => "struct bpf_sock",
@@ -28,7 +28,7 @@ pub fn beginProgram(ctx: anytype, section: []const u8, name: []const u8) !void {
         .SkMsg => "struct sk_msg_md",
     };
 
-    // Create a named opaque struct and a pointer to it for the first argument
+    
     const ctx_name_z = try ctx.dupeZ(ctx_struct_name);
     const opaque_struct = llvm.LLVMStructCreateNamed(ctx.context, ctx_name_z.ptr);
     const ctx_ptr_ty = llvm.LLVMPointerType(opaque_struct, 0);

@@ -15,7 +15,7 @@ pub const SourceLoc = struct {
 };
 
 pub const TokenKind = enum {
-    // keywords
+    
     keyword_unit,
     keyword_section,
     keyword_license,
@@ -31,30 +31,31 @@ pub const TokenKind = enum {
     keyword_guard,
     keyword_heap,
 
-    // map types
+    
     map_type_hash,
     map_type_array,
     map_type_ringbuf,
     map_type_lru_hash,
     map_type_prog_array,
 
-    // type keywords
+    
     type_u32,
     type_u64,
     type_i32,
     type_i64,
 
-    // punctuation
+    
     l_brace,
     r_brace,
     l_paren,
     r_paren,
     equals,
+    plus_equals,
     colon,
     dot,
     star,
 
-    // literals
+    
     identifier,
     string_literal,
     number,
@@ -67,6 +68,6 @@ pub const Token = struct {
     lexeme: []const u8,
     loc: SourceLoc,
 
-    // optional numeric value (used by number tokens)
+    
     int_value: i64 = 0,
 };
