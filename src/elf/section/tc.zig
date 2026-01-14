@@ -37,7 +37,7 @@ pub fn beginProgram(ctx: anytype, section: []const u8, name: []const u8) !void {
 }
 
 fn resolveTcKind(section: []const u8) ?TcKind {
-    // exact
+    
     if (std.mem.eql(u8, section, "tc") or std.mem.eql(u8, section, "classifier"))
         return .Classifier;
 
@@ -50,7 +50,7 @@ fn resolveTcKind(section: []const u8) ?TcKind {
     if (std.mem.eql(u8, section, "tcx/egress") or std.mem.eql(u8, section, "tc/egress"))
         return .TcxEgress;
 
-    // patterns
+    
     if (std.mem.startsWith(u8, section, "tc/")) {
         const extras = section["tc/".len..];
         if (isValidTcExtras(extras)) return .Classifier;
@@ -73,10 +73,10 @@ fn resolveTcKind(section: []const u8) ?TcKind {
 fn isValidTcExtras(extras: []const u8) bool {
     if (extras.len == 0) return false;
 
-    // common
+    
     if (std.mem.eql(u8, extras, "ingress") or std.mem.eql(u8, extras, "egress")) return true;
 
-    // conservative token set: [A-Za-z0-9._-]+
+    
     for (extras) |ch| {
         const ok =
             (ch >= 'a' and ch <= 'z') or

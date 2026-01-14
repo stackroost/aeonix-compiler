@@ -4,7 +4,7 @@ const tc = @import("./section/tc.zig");
 const xdp = @import("./section/xdp.zig");
 const tp = @import("./section/tracepoint.zig");
 const cgroup = @import("./section/cgroup.zig");
-
+const ast = @import("../ast/unit.zig");
 const llvm = @import("../llvm.zig").c;
 
 pub const LLVMElfWriter = struct {
@@ -85,7 +85,7 @@ pub const LLVMElfWriter = struct {
             return xdp.beginProgram(self, section, name);
         } else if (tp.supports(section)) {
             return tp.beginProgram(self, section, name);
-        } else if (cgroup.supports(section)) { // Add this
+        } else if (cgroup.supports(section)) { 
             return cgroup.beginProgram(self, section, name);
         }
 
@@ -156,7 +156,7 @@ pub const LLVMElfWriter = struct {
         }
         if (err_msg != null) llvm.LLVMDisposeMessage(err_msg);
 
-        // Read bytes
+        
         const file = try std.fs.cwd().openFile(filename, .{});
         defer file.close();
 
@@ -183,12 +183,57 @@ pub const LLVMElfWriter = struct {
         const lic_ty = llvm.LLVMTypeOf(lic_const);
         const glob = llvm.LLVMAddGlobal(self.module, lic_ty, global_name_z.ptr);
 
-        // Use internal linkage (static) and a private symbol name to avoid
-        // changing the symbol binding to STB_GLOBAL when emitting the object.
+        
+        
         llvm.LLVMSetLinkage(glob, llvm.LLVMInternalLinkage);
         llvm.LLVMSetSection(glob, section_name_z.ptr);
         llvm.LLVMSetInitializer(glob, lic_const);
         llvm.LLVMSetGlobalConstant(glob, 1);
         llvm.LLVMSetAlignment(glob, 1);
     }
+
+    pub fn emitMapDefinition(self: *LLVMElfWriter, map: ast.MapDecl) !void {
+        const i32_ty = llvm.LLVMInt32TypeInContext(self.context);
+
+        var field_types = [_]llvm.LLVMTypeRef{
+            i32_ty, 
+            i32_ty, 
+            i32_ty, 
+            i32_ty, 
+            i32_ty, 
+        };
+        const map_def_ty = llvm.LLVMStructTypeInContext(self.context, &field_types, 5, 0);
+
+        const bpf_map_type: u32 = switch (map.map_type) {
+            .hash => 1,
+            .array => 2,
+            .prog_array => 3,
+            .perf_event_array => 4,
+            .ringbuf => 27,
+            .lru_hash => 10,
+        };
+
+        var values = [_]llvm.LLVMValueRef{
+            llvm.LLVMConstInt(i32_ty, bpf_map_type, 0),
+            llvm.LLVMConstInt(i32_ty, getByteSize(map.key_type), 0),
+            llvm.LLVMConstInt(i32_ty, getByteSize(map.value_type), 0),
+            llvm.LLVMConstInt(i32_ty, map.max_entries, 0),
+            llvm.LLVMConstInt(i32_ty, 0, 0),
+        };
+
+        const initializer = llvm.LLVMConstStructInContext(self.context, &values, 5, 0);
+        const name_z = try self.dupeZ(map.name);
+        const global = llvm.LLVMAddGlobal(self.module, map_def_ty, name_z.ptr);
+
+        llvm.LLVMSetSection(global, "maps");
+        llvm.LLVMSetInitializer(global, initializer);
+        llvm.LLVMSetLinkage(global, llvm.LLVMExternalLinkage);
+    }
 };
+
+fn getByteSize(t: ast.Type) u32 {
+    return switch (t) {
+        .u32, .i32 => 4,
+        .u64, .i64 => 8,
+    };
+}

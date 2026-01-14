@@ -13,19 +13,18 @@ pub const ValidationError = error{
 };
 
 pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []const u8) !void {
-    // Validate unit name
     if (unit.name.len == 0) {
         try diagnostics.reportError("Unit name cannot be empty", unit.loc, source);
         return ValidationError.EmptyUnitName;
     }
 
-    // Validate at least one section
+    
     if (unit.sections.len == 0) {
         try diagnostics.reportError("Unit must have at least one section", unit.loc, source);
         return ValidationError.NoSections;
     }
 
-    // Validate section names - invalid sections will cause load-time failures
+    
     for (unit.sections) |section| {
         if (!SectionValidator.isValid(section)) {
             const msg = try std.fmt.allocPrint(
@@ -34,18 +33,18 @@ pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []con
                 .{section},
             );
             try diagnostics.reportError(msg, unit.loc, source);
-            diagnostics.allocator.free(msg); // reportError now owns a copy
+            diagnostics.allocator.free(msg); 
             return ValidationError.InvalidSection;
         }
     }
 
-    // Validate license is provided
+    
     if (unit.license == null) {
         try diagnostics.reportError("License is required for eBPF programs", unit.loc, source);
         return ValidationError.MissingLicense;
     }
 
-    // Validate license is valid
+    
     const license = unit.license.?;
     const valid_licenses = [_][]const u8{ "GPL", "Dual BSD/GPL", "GPL v2", "GPL-2.0" };
     var license_valid = false;
@@ -58,16 +57,16 @@ pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []con
     if (!license_valid) {
         const msg = try std.fmt.allocPrint(diagnostics.allocator, "Unknown license: '{s}'", .{license});
         try diagnostics.reportWarning(msg, unit.loc, source);
-        diagnostics.allocator.free(msg); // reportWarning now owns a copy
+        diagnostics.allocator.free(msg); 
     }
 
-    // Validate that unit has at least one return statement or instruction
+    
     if (unit.body.len == 0) {
         try diagnostics.reportError("Unit must have at least one return statement or instruction", unit.loc, source);
         return ValidationError.NoReturnOrInstructions;
     }
 
-    // Heap variable safety checking
+    
     const unit_sema = @import("unit.zig");
     _ = unit_sema.checkUnit(unit, diagnostics);
 }

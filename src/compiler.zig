@@ -24,25 +24,16 @@ pub fn compile(
     var diagnostics = Diagnostics.init(allocator);
     defer diagnostics.deinit();
 
-    // Parse
-    const unit = parser.parse(src, allocator) catch |err| {
+    
+    const unit = parser.parse(src, allocator) catch {
         const SourceLoc = @import("parser/token.zig").SourceLoc;
-        switch (err) {
-            parser.ParseError.MultipleUnits => {
-                // Report error at end of file (where extra content would be)
-                const loc = SourceLoc.init(1, 1, src.len);
-                try diagnostics.reportError("File must contain exactly one unit block", loc, src);
-            },
-            else => {
-                const loc = SourceLoc.init(1, 1, 0);
-                try diagnostics.reportError("Parse error occurred", loc, src);
-            },
-        }
+        const loc = SourceLoc.init(1, 1, 0);
+        try diagnostics.reportError("Parse error occurred", loc, src);
         diagnostics.printAllStd() catch {};
         return CompileError.CompilationFailed;
     };
 
-    // Semantic analysis
+    
     sema.checkUnit(&unit, &diagnostics, src) catch {
         diagnostics.printAllStd() catch {};
         return CompileError.CompilationFailed;
@@ -53,13 +44,16 @@ pub fn compile(
         return CompileError.CompilationFailed;
     }
 
-    // Lower to IR
+    
     const unit_ir = ir.lowerUnit(&unit);
 
-    // Codegen
+    
     var elf_writer = try ElfWriter.init(allocator);
     defer elf_writer.deinit();
 
+    for (unit.maps) |map_decl| {
+        try elf_writer.emitMapDefinition(map_decl);
+    }
     try codegen.emitUnit(
         &elf_writer,
         unit_ir,

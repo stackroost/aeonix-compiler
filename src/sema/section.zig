@@ -2,34 +2,25 @@ const std = @import("std");
 
 pub const SectionValidator = struct {
     pub fn isValid(section: []const u8) bool {
-        const static_sections = [_][]const u8{
-            // Networking: XDP
+        const static_sections = [_][]const u8{            
             "xdp", "xdp/ingress", "xdp/frags", "xdp/devmap", 
             "xdp/cpumap", "xdp/offload", "xdp/egress",
-
-            // Networking: TC
+            
             "tc", "classifier", "action", 
             "tcx/ingress", "tcx/egress", 
             "tc/ingress", "tc/egress",
-
-            // Tracepoints (Base types)
+            
             "tracepoint", "tp", "raw_tracepoint", "raw_tp", "tp_btf",
-
-            // Cgroups & Sockets
+            
             "cgroup_skb", "cgroup_sock", "cgroup_skb/ingress", 
             "cgroup_skb/egress", "sockops", "sk_msg",
 
-            // Infrastructure
             "maps", "license", "version", "perf_event",
         };
-
-        // 1. Exact Match Check
+        
         for (static_sections) |valid| {
             if (std.mem.eql(u8, section, valid)) return true;
-        }
-
-        // 2. Pattern Match: Tracepoints (Standard & Raw)
-        // Format: tracepoint/<category>/<event> or tp/<category>/<event>
+        }        
         if (std.mem.startsWith(u8, section, "tracepoint/") or std.mem.startsWith(u8, section, "tp/")) {
             const path = if (std.mem.startsWith(u8, section, "tp/")) section[3..] else section[11..];
             if (std.mem.indexOfScalar(u8, path, '/')) |slash_pos| {
@@ -39,30 +30,21 @@ pub const SectionValidator = struct {
             }
             return false;
         }
-
-        // Format: raw_tracepoint/<event> or raw_tp/<event>
         if (std.mem.startsWith(u8, section, "raw_tracepoint/") or std.mem.startsWith(u8, section, "raw_tp/")) {
             const event = if (std.mem.startsWith(u8, section, "raw_tp/")) section[7..] else section[15..];
             return isValidIdentifier(event);
         }
-
-        // Format: tp_btf/<event> (Modern BTF-powered)
         if (std.mem.startsWith(u8, section, "tp_btf/")) {
             return isValidIdentifier(section[7..]);
         }
-
-        // 3. Pattern Match: Probes (Kprobe/Uprobe)
         if (std.mem.startsWith(u8, section, "kprobe/") or std.mem.startsWith(u8, section, "kretprobe/")) {
             const func = if (std.mem.startsWith(u8, section, "kprobe/")) section[7..] else section[10..];
             return isValidIdentifier(func);
         }
-
         if (std.mem.startsWith(u8, section, "uprobe/") or std.mem.startsWith(u8, section, "uretprobe/")) {
             const sym = if (std.mem.startsWith(u8, section, "uprobe/")) section[7..] else section[10..];
             return isValidIdentifier(sym);
         }
-
-        // 4. Pattern Match: TC Extras
         if (std.mem.startsWith(u8, section, "tc/")) {
             return isValidTcExtras(section[3..]);
         }
