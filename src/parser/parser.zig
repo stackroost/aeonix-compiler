@@ -2,7 +2,7 @@ const std = @import("std");
 const Token = @import("token.zig").Token;
 const TokenKind = @import("token.zig").TokenKind;
 const Lexer = @import("../lexer/lexer.zig").Lexer;
-const ast = @import("../ast/unit.zig");
+const ast = @import("../ast/mod.zig");
 
 pub const Parser = struct {
     allocator: std.mem.Allocator,
@@ -41,7 +41,7 @@ pub const Parser = struct {
 
     pub fn match(self: *Parser, kind: TokenKind) bool {
         if (self.current.kind == kind) {
-            _ = self.advance() catch {}; 
+            _ = self.advance() catch {};
             return true;
         }
         return false;
@@ -59,8 +59,14 @@ pub const Parser = struct {
     pub fn parseError(self: *Parser, msg: []const u8) ParseError {
         _ = self;
         _ = msg;
-        
         return error.ParseError;
+    }
+
+    // ---------- Dispatch to modules ----------
+
+    pub fn parseProgram(self: *Parser) ParseError!ast.Program {
+        const prog = @import("program.zig");
+        return prog.parseProgram(self);
     }
 
     pub fn parseUnit(self: *Parser) ParseError!ast.Unit {
@@ -74,7 +80,7 @@ pub const Parser = struct {
     }
 
     pub fn parseMap(self: *Parser) ParseError!ast.MapDecl {
-        const unit_parser = @import("unit.zig");
-        return unit_parser.parseMap(self);
+        const map_parser = @import("map.zig");
+        return map_parser.parseMap(self);
     }
 };

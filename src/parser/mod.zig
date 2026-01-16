@@ -1,6 +1,6 @@
 const std = @import("std");
 const Parser = @import("parser.zig").Parser;
-const ast = @import("../ast/unit.zig");
+const ast = @import("../ast/mod.zig");
 const TokenKind = @import("token.zig").TokenKind;
 
 pub const ParseError = error{
@@ -14,9 +14,8 @@ pub const ParseError = error{
     OutOfMemory,
 };
 
-pub fn parse(src: []const u8, allocator: std.mem.Allocator) !ast.Unit {
+pub fn parse(src: []const u8, allocator: std.mem.Allocator) !ast.Program {
     var p = try Parser.init(src, allocator);
     defer p.deinit();
-
-    return p.parseUnit();
+    return p.parseProgram();
 }
