@@ -1,164 +1,63 @@
 const std = @import("std");
 const ast = @import("../ast/unit.zig");
 const Diagnostics = @import("../diagnostics.zig").Diagnostics;
+const SectionValidator = @import("section.zig").SectionValidator;
 
-
-pub const HeapSafetyState = enum {
-    
-    unchecked,
-    
-    verified,
+pub const ValidationError = error{
+    EmptyUnitName,
+    NoSections,
+    InvalidSection,
+    MissingLicense,
+    InvalidLicense,
+    NoReturnOrInstructions,
 };
 
-
-pub const SymbolEntry = struct {
-    name: []const u8,
-    var_type: union(enum) {
-        reg: void,
-        imm: void,
-        heap: HeapSafetyState,
-    },
-};
-
-
-fn checkStmtSafety(stmt: *const ast.Stmt, symbols: *std.StringHashMap(SymbolEntry), diag: *Diagnostics) bool {
-    switch (stmt.kind) {
-        .Return => return true,
-        .VarDecl => |vd| {
-            
-            const entry = SymbolEntry{
-                .name = vd.name,
-                .var_type = switch (vd.var_type) {
-                    .reg => .reg,
-                    .imm => .imm,
-                },
-            };
-            symbols.put(vd.name, entry) catch return false;
-            return true;
-        },
-        .HeapVarDecl => |hvd| {
-            
-            const entry = SymbolEntry{
-                .name = hvd.name,
-                .var_type = .{ .heap = .unchecked },
-            };
-            symbols.put(hvd.name, entry) catch return false;
-            return true;
-        },
-        .IfGuard => |guard| {
-            
-            if (!checkExprSafety(&guard.condition, symbols, diag)) {
-                return false;
-            }
-
-            
-            switch (guard.condition.kind) {
-                .VarRef => |var_name| {
-                    if (symbols.get(var_name)) |entry| {
-                        switch (entry.var_type) {
-                            .heap => {
-                                
-                                const verified_entry = SymbolEntry{
-                                    .name = entry.name,
-                                    .var_type = .{ .heap = .verified },
-                                };
-                                symbols.put(var_name, verified_entry) catch return false;
-                            },
-                            else => {
-                                
-                                return false;
-                            },
-                        }
-                    } else {
-                        
-                        return false;
-                    }
-                },
-                else => {
-                    
-                    return false;
-                },
-            }
-
-            
-            for (guard.body) |body_stmt| {
-                if (!checkStmtSafety(&body_stmt, symbols, diag)) {
-                    return false;
-                }
-            }
-            return true;
-        },
-    }
-}
-
-
-fn checkExprSafety(expr: *const ast.Expr, symbols: *const std.StringHashMap(SymbolEntry), _: *Diagnostics) bool {
-    switch (expr.kind) {
-        .VarRef => return true, 
-        .HeapLookup => return true, 
-        .Dereference => |inner_expr| {
-            
-            switch (inner_expr.kind) {
-                .VarRef => |var_name| {
-                    if (symbols.get(var_name)) |entry| {
-                        switch (entry.var_type) {
-                            .heap => |state| {
-                                if (state == .unchecked) {
-                                    
-                                    return false;
-                                }
-                            },
-                            else => {
-                                
-                                return false;
-                            },
-                        }
-                    } else {
-                        
-                        return false;
-                    }
-                },
-                else => {
-                    
-                    return false;
-                },
-            }
-            return true;
-        },
-    }
-}
-
-pub fn checkUnit(u: *const ast.Unit, diag: *Diagnostics) bool {
-    
-    if (u.sections.len == 0) {
-        
-        return false;
+pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []const u8) !void {
+    if (unit.name.len == 0) {
+        try diagnostics.reportError("Unit name cannot be empty", unit.loc, source);
+        return ValidationError.EmptyUnitName;
     }
 
-    
-    var returns: usize = 0;
-    for (u.body) |stmt| {
-        switch (stmt.kind) {
-            .Return => returns += 1,
-            else => {},
+    if (unit.sections.len == 0) {
+        try diagnostics.reportError("Unit must have at least one section", unit.loc, source);
+        return ValidationError.NoSections;
+    }
+
+    for (unit.sections) |section| {
+        if (!SectionValidator.isValid(section)) {
+            const msg = try std.fmt.allocPrint(
+                diagnostics.allocator,
+                "Invalid section name: '{s}'",
+                .{section},
+            );
+            try diagnostics.reportError(msg, unit.loc, source);
+            diagnostics.allocator.free(msg);
+            return ValidationError.InvalidSection;
         }
     }
 
-    if (returns != 1) {
-        
-        return false;
+    if (unit.license == null) {
+        try diagnostics.reportError("License is required for eBPF programs", unit.loc, source);
+        return ValidationError.MissingLicense;
     }
 
-    
-    var symbols = std.StringHashMap(SymbolEntry).init(std.heap.page_allocator);
-    defer symbols.deinit();
-
-    
-    for (u.body) |stmt| {
-        if (!checkStmtSafety(&stmt, &symbols, diag)) {
-            return false;
+    const license = unit.license.?;
+    const valid_licenses = [_][]const u8{ "GPL", "Dual BSD/GPL", "GPL v2", "GPL-2.0" };
+    var license_valid = false;
+    for (valid_licenses) |valid| {
+        if (std.mem.eql(u8, license, valid)) {
+            license_valid = true;
+            break;
         }
     }
+    if (!license_valid) {
+        const msg = try std.fmt.allocPrint(diagnostics.allocator, "Unknown license: '{s}'", .{license});
+        try diagnostics.reportWarning(msg, unit.loc, source);
+        diagnostics.allocator.free(msg);
+    }
 
-    return true;
+    if (unit.body.len == 0) {
+        try diagnostics.reportError("Unit must have at least one return statement or instruction", unit.loc, source);
+        return ValidationError.NoReturnOrInstructions;
+    }
 }

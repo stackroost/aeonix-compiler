@@ -17,24 +17,19 @@ pub fn compile(
     src: []const u8,
     output_path: []const u8,
 ) !void {
-    if (src.len == 0) {
-        return CompileError.EmptyInput;
-    }
+    if (src.len == 0) return CompileError.EmptyInput;
 
     var diagnostics = Diagnostics.init(allocator);
     defer diagnostics.deinit();
 
-    
-    const unit = parser.parse(src, allocator) catch {
+    const program = parser.parse(src, allocator) catch {
         const SourceLoc = @import("parser/token.zig").SourceLoc;
-        const loc = SourceLoc.init(1, 1, 0);
-        try diagnostics.reportError("Parse error occurred", loc, src);
+        try diagnostics.reportError("Parse error", SourceLoc.init(1,1,0), src);
         diagnostics.printAllStd() catch {};
         return CompileError.CompilationFailed;
     };
 
-    
-    sema.checkUnit(&unit, &diagnostics, src) catch {
+    sema.checkProgram(&program, &diagnostics, src) catch {
         diagnostics.printAllStd() catch {};
         return CompileError.CompilationFailed;
     };
@@ -44,23 +39,26 @@ pub fn compile(
         return CompileError.CompilationFailed;
     }
 
-    
-    const unit_ir = ir.lowerUnit(&unit);
+    const program_ir = ir.lowerProgram(&program);
 
-    
     var elf_writer = try ElfWriter.init(allocator);
     defer elf_writer.deinit();
 
-    for (unit.maps) |map_decl| {
+    // Global maps
+    for (program.maps) |map_decl| {
         try elf_writer.emitMapDefinition(map_decl);
     }
-    try codegen.emitUnit(
-        &elf_writer,
-        unit_ir,
-        unit.name,
-        unit.sections,
-        unit.license,
-    );
+
+    // All eBPF programs
+    for (program_ir.units) |unit_ir| {
+        try codegen.emitUnit(
+            &elf_writer,
+            unit_ir,
+            unit_ir.name,
+            unit_ir.sections,
+            unit_ir.license,
+        );
+    }
 
     const elf_bytes = try elf_writer.finish();
     defer allocator.free(elf_bytes);

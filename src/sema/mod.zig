@@ -1,72 +1,30 @@
 const std = @import("std");
-const ast = @import("../ast/unit.zig");
+const ast = @import("../ast/mod.zig");
 const Diagnostics = @import("../diagnostics.zig").Diagnostics;
-const SectionValidator = @import("section.zig").SectionValidator;
+
+const UnitSema = @import("unit.zig");
+const MapSema = @import("map.zig");
 
 pub const ValidationError = error{
-    EmptyUnitName,
-    NoSections,
-    InvalidSection,
-    MissingLicense,
-    InvalidLicense,
-    NoReturnOrInstructions,
+    UnitError,
+    MapError,
 };
 
-pub fn checkUnit(unit: *const ast.Unit, diagnostics: *Diagnostics, source: []const u8) !void {
-    if (unit.name.len == 0) {
-        try diagnostics.reportError("Unit name cannot be empty", unit.loc, source);
-        return ValidationError.EmptyUnitName;
+pub fn checkProgram(program: *const ast.Program, diagnostics: *Diagnostics, source: []const u8) !void {
+    var map_names = std.StringHashMap(void).init(diagnostics.allocator);
+    defer map_names.deinit();
+
+    for (program.maps) |map_decl| {
+        MapSema.checkMap(&map_decl, diagnostics, source, &map_names) catch |err| {
+            _ = err;
+            return ValidationError.MapError;
+        };
     }
 
-    
-    if (unit.sections.len == 0) {
-        try diagnostics.reportError("Unit must have at least one section", unit.loc, source);
-        return ValidationError.NoSections;
+    for (program.units) |unit_decl| {
+        UnitSema.checkUnit(&unit_decl, diagnostics, source) catch |err| {
+            _ = err;
+            return ValidationError.UnitError;
+        };
     }
-
-    
-    for (unit.sections) |section| {
-        if (!SectionValidator.isValid(section)) {
-            const msg = try std.fmt.allocPrint(
-                diagnostics.allocator,
-                "Invalid section name: '{s}'. Invalid section names will cause the program to fail at load time.",
-                .{section},
-            );
-            try diagnostics.reportError(msg, unit.loc, source);
-            diagnostics.allocator.free(msg); 
-            return ValidationError.InvalidSection;
-        }
-    }
-
-    
-    if (unit.license == null) {
-        try diagnostics.reportError("License is required for eBPF programs", unit.loc, source);
-        return ValidationError.MissingLicense;
-    }
-
-    
-    const license = unit.license.?;
-    const valid_licenses = [_][]const u8{ "GPL", "Dual BSD/GPL", "GPL v2", "GPL-2.0" };
-    var license_valid = false;
-    for (valid_licenses) |valid| {
-        if (std.mem.eql(u8, license, valid)) {
-            license_valid = true;
-            break;
-        }
-    }
-    if (!license_valid) {
-        const msg = try std.fmt.allocPrint(diagnostics.allocator, "Unknown license: '{s}'", .{license});
-        try diagnostics.reportWarning(msg, unit.loc, source);
-        diagnostics.allocator.free(msg); 
-    }
-
-    
-    if (unit.body.len == 0) {
-        try diagnostics.reportError("Unit must have at least one return statement or instruction", unit.loc, source);
-        return ValidationError.NoReturnOrInstructions;
-    }
-
-    
-    const unit_sema = @import("unit.zig");
-    _ = unit_sema.checkUnit(unit, diagnostics);
 }
