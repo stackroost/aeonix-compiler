@@ -47,6 +47,10 @@ pub const Parser = struct {
         return false;
     }
 
+    pub fn check(self: *Parser, kind: TokenKind) bool {
+        return self.current.kind == kind;
+    }
+
     pub fn expect(self: *Parser, kind: TokenKind) ParseError!Token {
         if (self.current.kind != kind) {
             return error.UnexpectedToken;

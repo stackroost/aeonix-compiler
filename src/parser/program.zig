@@ -23,6 +23,8 @@ pub fn parseProgram(self: *Parser) Parser.ParseError!ast.Program {
         }
     }
 
+    std.debug.print("[DEBUG] Parsed program with {d} maps and {d} units\n", .{ maps.items.len, units.items.len });
+
     return ast.Program{
         .maps = try maps.toOwnedSlice(self.allocator),
         .units = try units.toOwnedSlice(self.allocator),

@@ -8,13 +8,14 @@ fn parseStmt(self: *Parser, body: *std.ArrayList(ast.Stmt)) Parser.ParseError!vo
         const var_loc = self.current.loc;
         const var_name_tok = try self.expect(.identifier);
         _ = try self.expect(.equals);
-        const value_tok = try self.expect(.number);
+        const value_expr = try self.parseExpr();
+        _ = try self.expect(.semicolon);
 
         try body.append(self.allocator, .{
             .kind = .{ .VarDecl = .{
                 .name = try self.allocator.dupe(u8, var_name_tok.lexeme),
                 .var_type = .reg,
-                .value = value_tok.int_value,
+                .value = value_expr,
             } },
             .loc = var_loc,
         });
@@ -25,13 +26,14 @@ fn parseStmt(self: *Parser, body: *std.ArrayList(ast.Stmt)) Parser.ParseError!vo
         const var_loc = self.current.loc;
         const var_name_tok = try self.expect(.identifier);
         _ = try self.expect(.equals);
-        const value_tok = try self.expect(.number);
+        const value_expr = try self.parseExpr();
+        _ = try self.expect(.semicolon);
 
         try body.append(self.allocator, .{
             .kind = .{ .VarDecl = .{
                 .name = try self.allocator.dupe(u8, var_name_tok.lexeme),
                 .var_type = .imm,
-                .value = value_tok.int_value,
+                .value = value_expr,
             } },
             .loc = var_loc,
         });
@@ -53,6 +55,7 @@ fn parseStmt(self: *Parser, body: *std.ArrayList(ast.Stmt)) Parser.ParseError!vo
         _ = try self.expect(.l_paren);
         const key_expr = try self.parseExpr();
         _ = try self.expect(.r_paren);
+        _ = try self.expect(.semicolon);
 
         try body.append(self.allocator, .{
             .kind = .{ .HeapVarDecl = .{
@@ -69,10 +72,11 @@ fn parseStmt(self: *Parser, body: *std.ArrayList(ast.Stmt)) Parser.ParseError!vo
 
     if (self.match(.keyword_return)) {
         const return_loc = self.current.loc;
-        const v = try self.expect(.number);
+        const v = try self.parseExpr();
+        _ = try self.expect(.semicolon);
 
         try body.append(self.allocator, .{
-            .kind = .{ .Return = v.int_value },
+            .kind = .{ .Return = v },
             .loc = return_loc,
         });
         return;
@@ -86,7 +90,7 @@ fn parseStmt(self: *Parser, body: *std.ArrayList(ast.Stmt)) Parser.ParseError!vo
         _ = try self.expect(.r_paren);
         _ = try self.expect(.l_brace);
 
-        var guard_body = std.ArrayList(ast.Stmt).init(self.allocator);
+        var guard_body = try std.ArrayList(ast.Stmt).initCapacity(self.allocator, 0);
         while (!self.match(.r_brace)) {
             try parseStmt(self, &guard_body);
         }
@@ -104,12 +108,40 @@ fn parseStmt(self: *Parser, body: *std.ArrayList(ast.Stmt)) Parser.ParseError!vo
         return;
     }
 
+    const target = try self.parseExpr();
+    if (self.match(.equals)) {
+        const value = try self.parseExpr();
+        _ = try self.expect(.semicolon);
+        try body.append(self.allocator, .{
+            .kind = .{ .Assignment = .{
+                .target = target,
+                .op = "=",
+                .value = value,
+            } },
+            .loc = target.loc,
+        });
+        return;
+    } else if (self.match(.plus_equals)) {
+        const value = try self.parseExpr();
+        _ = try self.expect(.semicolon);
+        try body.append(self.allocator, .{
+            .kind = .{ .Assignment = .{
+                .target = target,
+                .op = "+=",
+                .value = value,
+            } },
+            .loc = target.loc,
+        });
+        std.debug.print("[DEBUG] Parsed assignment\n", .{});
+        return;
+    }
+
     return self.parseError("unexpected statement");
 }
 
-// -------------------- Expression Parsing --------------------
 pub fn parseExpr(self: *Parser) Parser.ParseError!*ast.Expr {
-    if (self.match(.star)) {
+    if (self.check(.star)) {
+        _ = try self.expect(.star);
         const inner = try self.parseExpr();
         const expr = try self.allocator.create(ast.Expr);
         expr.* = .{
@@ -119,56 +151,87 @@ pub fn parseExpr(self: *Parser) Parser.ParseError!*ast.Expr {
         return expr;
     }
 
-    const tok = try self.expect(.identifier);
-    const expr = try self.allocator.create(ast.Expr);
-    expr.* = .{
-        .kind = .{ .VarRef = try self.allocator.dupe(u8, tok.lexeme) },
-        .loc = tok.loc,
-    };
-    return expr;
+    if (self.check(.number)) {
+        const num_tok = try self.expect(.number);
+        const expr = try self.allocator.create(ast.Expr);
+        expr.* = .{
+            .kind = .{ .Number = num_tok.int_value },
+            .loc = num_tok.loc,
+        };
+        return expr;
+    }
+
+    const receiver_tok = try self.expect(.identifier);
+
+    if (self.match(.dot)) {
+        const method_tok = try self.expect(.identifier);
+        _ = try self.expect(.l_paren);
+        const arg = try self.parseExpr();
+        _ = try self.expect(.r_paren);
+
+        const expr = try self.allocator.create(ast.Expr);
+        expr.* = .{
+            .kind = .{ .MethodCall = .{
+                .receiver = try self.allocator.dupe(u8, receiver_tok.lexeme),
+                .method = try self.allocator.dupe(u8, method_tok.lexeme),
+                .arg = arg,
+            } },
+            .loc = receiver_tok.loc,
+        };
+        return expr;
+    } else {
+        const expr = try self.allocator.create(ast.Expr);
+        expr.* = .{
+            .kind = .{ .VarRef = try self.allocator.dupe(u8, receiver_tok.lexeme) },
+            .loc = receiver_tok.loc,
+        };
+        return expr;
+    }
 }
+
 pub fn parseUnit(self: *Parser) Parser.ParseError!ast.Unit {
     const unit_loc = self.current.loc;
     _ = try self.expect(.keyword_unit);
 
     const name_tok = try self.expect(.identifier);
+    std.debug.print("[DEBUG] Parsing unit: {s}\n", .{name_tok.lexeme});
     _ = try self.expect(.l_brace);
 
-    var sections = std.ArrayList([]const u8).init(self.allocator);
-    var maps = std.ArrayList(ast.MapDecl).init(self.allocator);
-    var body = std.ArrayList(ast.Stmt).init(self.allocator);
+    var sections = try std.ArrayList([]const u8).initCapacity(self.allocator, 0);
+    var body = try std.ArrayList(ast.Stmt).initCapacity(self.allocator, 0);
     var license: ?[]const u8 = null;
 
     while (!self.match(.r_brace)) {
         if (self.match(.keyword_section)) {
+            _ = try self.expect(.colon);
             const s = try self.expect(.string_literal);
             const txt = if (s.lexeme.len >= 2) s.lexeme[1 .. s.lexeme.len - 1] else "";
-            try sections.append(try self.allocator.dupe(u8, txt));
+            try sections.append(self.allocator, try self.allocator.dupe(u8, txt));
+            _ = try self.expect(.semicolon);
+            std.debug.print("[DEBUG] Parsed section\n", .{});
             continue;
         }
 
         if (self.match(.keyword_license)) {
+            _ = try self.expect(.colon);
             const s = try self.expect(.string_literal);
             const txt = if (s.lexeme.len >= 2) s.lexeme[1 .. s.lexeme.len - 1] else "";
             license = try self.allocator.dupe(u8, txt);
-            continue;
-        }
-
-        if (self.match(.keyword_map)) {
-            const m = try parseMap(self);
-            try maps.append(m);
+            _ = try self.expect(.semicolon);
+            std.debug.print("[DEBUG] Parsed license\n", .{});
             continue;
         }
 
         try parseStmt(self, &body);
     }
 
+    std.debug.print("[DEBUG] Finished parsing unit\n", .{});
+
     return ast.Unit{
         .name = try self.allocator.dupe(u8, name_tok.lexeme),
         .loc = unit_loc,
         .sections = try sections.toOwnedSlice(self.allocator),
         .license = license,
-        .maps = try maps.toOwnedSlice(self.allocator),
         .body = try body.toOwnedSlice(self.allocator),
     };
 }

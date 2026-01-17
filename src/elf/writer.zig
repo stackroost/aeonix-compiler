@@ -6,6 +6,7 @@ const tp = @import("./section/tracepoint.zig");
 const cgroup = @import("./section/cgroup.zig");
 const ast = @import("../ast/unit.zig");
 const llvm = @import("../llvm.zig").c;
+const map_ast = @import("../ast/map.zig");
 
 pub const LLVMElfWriter = struct {
     pub const Error = error{
@@ -231,7 +232,7 @@ pub const LLVMElfWriter = struct {
     }
 };
 
-fn getByteSize(t: ast.Type) u32 {
+fn getByteSize(t: map_ast.Type) u32 {
     return switch (t) {
         .u32, .i32 => 4,
         .u64, .i64 => 8,
