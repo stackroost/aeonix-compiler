@@ -25,31 +25,27 @@ pub fn checkMap(
         return ValidationError.DuplicateMapName;
     }
     try map_names.put(map_decl.name, {});
+
     if (map_decl.max_entries == 0) {
         try diagnostics.reportError("Map 'max' must be greater than zero", map_decl.loc, source);
         return ValidationError.InvalidMaxEntries;
     }
+    
     switch (map_decl.key_type) {
         .u32, .u64, .i32, .i64 => {},
-        else => {
-            try diagnostics.reportError("Invalid map key type", map_decl.loc, source);
-            return ValidationError.InvalidKeyValueType;
-        },
     }
 
     switch (map_decl.value_type) {
         .u32, .u64, .i32, .i64 => {},
-        else => {
-            try diagnostics.reportError("Invalid map value type", map_decl.loc, source);
-            return ValidationError.InvalidKeyValueType;
-        },
     }
-
+    
     switch (map_decl.map_type) {
-        .hash, .array, .ringbuf, .lru_hash, .prog_array => {},
-        else => {
-            try diagnostics.reportError("Invalid map type", map_decl.loc, source);
-            return ValidationError.InvalidType;
-        },
+        .hash,
+        .array,
+        .ringbuf,
+        .lru_hash,
+        .prog_array,
+        .perf_event_array,
+        => {},
     }
 }

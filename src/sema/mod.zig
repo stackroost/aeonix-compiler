@@ -15,16 +15,12 @@ pub fn checkProgram(program: *const ast.Program, diagnostics: *Diagnostics, sour
     defer map_names.deinit();
 
     for (program.maps) |map_decl| {
-        MapSema.checkMap(&map_decl, diagnostics, source, &map_names) catch |err| {
-            _ = err;
-            return ValidationError.MapError;
-        };
+        MapSema.checkMap(&map_decl, diagnostics, source, &map_names)
+            catch return ValidationError.MapError;
     }
 
     for (program.units) |unit_decl| {
-        UnitSema.checkUnit(&unit_decl, diagnostics, source) catch |err| {
-            _ = err;
-            return ValidationError.UnitError;
-        };
+        UnitSema.checkUnit(&unit_decl, diagnostics, source)
+            catch return ValidationError.UnitError;
     }
 }

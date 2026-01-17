@@ -54,6 +54,7 @@ pub const TokenKind = enum {
     colon,
     dot,
     star,
+    semicolon,
 
     
     identifier,

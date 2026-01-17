@@ -2,7 +2,7 @@ const std = @import("std");
 
 const parser = @import("parser/mod.zig");
 const sema = @import("sema/mod.zig");
-const ir = @import("ir/unit.zig");
+const ir = @import("ir/mod.zig");
 const codegen = @import("codegen/ebpf/unit.zig");
 const ElfWriter = @import("elf/writer.zig").LLVMElfWriter;
 const Diagnostics = @import("diagnostics.zig").Diagnostics;
@@ -24,7 +24,7 @@ pub fn compile(
 
     const program = parser.parse(src, allocator) catch {
         const SourceLoc = @import("parser/token.zig").SourceLoc;
-        try diagnostics.reportError("Parse error", SourceLoc.init(1,1,0), src);
+        try diagnostics.reportError("Parse error", SourceLoc.init(1, 1, 0), src);
         diagnostics.printAllStd() catch {};
         return CompileError.CompilationFailed;
     };
@@ -39,7 +39,10 @@ pub fn compile(
         return CompileError.CompilationFailed;
     }
 
-    const program_ir = ir.lowerProgram(&program);
+    const program_ir = ir.lowerProgram(&program, allocator) catch {
+        std.debug.print("IR lower failed\n", .{});
+        return CompileError.CompilationFailed;
+    };
 
     var elf_writer = try ElfWriter.init(allocator);
     defer elf_writer.deinit();

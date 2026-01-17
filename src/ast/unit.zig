@@ -1,5 +1,5 @@
 const SourceLoc = @import("../parser/token.zig").SourceLoc;
-const MapDecl = @import("map.zig").MapDecl;
+pub const MapDecl = @import("map.zig").MapDecl; // re-export map type
 
 pub const Unit = struct {
     name: []const u8,
@@ -15,10 +15,17 @@ pub const Stmt = struct {
 };
 
 pub const StmtKind = union(enum) {
-    Return: i64,
+    Return: *Expr,
     VarDecl: VarDecl,
     HeapVarDecl: HeapVarDecl,
+    Assignment: Assignment,
     IfGuard: IfGuard,
+};
+
+pub const Assignment = struct {
+    target: *Expr,
+    op: []const u8,
+    value: *Expr,
 };
 
 pub const IfGuard = struct {
@@ -33,6 +40,8 @@ pub const Expr = struct {
 
 pub const ExprKind = union(enum) {
     VarRef: []const u8,
+    Number: i64,
+    MethodCall: MethodCall,
     HeapLookup: HeapLookup,
     Dereference: *Expr,
 };
@@ -40,7 +49,7 @@ pub const ExprKind = union(enum) {
 pub const VarDecl = struct {
     name: []const u8,
     var_type: VarType,
-    value: i64,
+    value: *Expr,
 };
 
 pub const VarType = enum {
@@ -51,6 +60,12 @@ pub const VarType = enum {
 pub const HeapLookup = struct {
     map_name: []const u8,
     key_expr: *Expr,
+};
+
+pub const MethodCall = struct {
+    receiver: []const u8,
+    method: []const u8,
+    arg: *Expr,
 };
 
 pub const HeapVarDecl = struct {

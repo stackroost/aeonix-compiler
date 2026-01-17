@@ -23,9 +23,7 @@ pub const Lexer = struct {
     }
 
     fn peek(self: *const Lexer) u8 {
-        if (self.index >= self.src.len) {
-            return 0;
-        }
+        if (self.index >= self.src.len) return 0;
         return self.src[self.index];
     }
 
@@ -44,13 +42,9 @@ pub const Lexer = struct {
     fn skipWhitespace(self: *Lexer) void {
         while (self.index < self.src.len) {
             const ch = self.src[self.index];
-            if (ch == ' ' or ch == '\t' or ch == '\r') {
+            if (ch == ' ' or ch == '\t' or ch == '\r' or ch == '\n') {
                 self.advance();
-            } else if (ch == '\n') {
-                self.advance();
-            } else {
-                break;
-            }
+            } else break;
         }
     }
 
@@ -58,89 +52,45 @@ pub const Lexer = struct {
         if (self.peek() == '/') {
             self.advance();
             if (self.peek() == '/') {
-                // Single-line comment
                 self.advance();
                 while (self.index < self.src.len and self.src[self.index] != '\n') {
                     self.advance();
                 }
-                if (self.index < self.src.len) {
-                    self.advance(); // consume newline
-                }
+                if (self.index < self.src.len) self.advance();
             } else if (self.peek() == '*') {
-                // Multi-line comment
                 self.advance();
                 while (self.index < self.src.len) {
                     if (self.src[self.index] == '*' and self.index + 1 < self.src.len and self.src[self.index + 1] == '/') {
-                        self.advance(); // consume *
-                        self.advance(); // consume /
+                        self.advance();
+                        self.advance();
                         return;
                     }
                     self.advance();
                 }
                 return error.UnterminatedComment;
             } else {
-                // Not a comment, backtrack
-                self.index -= 1;
+                self.index -= 1; // not a comment, backtrack
                 self.column -= 1;
             }
         }
-    }
-
-    fn isKeyword(self: *const Lexer, start: usize, keyword: []const u8) bool {
-        if (self.index - start != keyword.len) {
-            return false;
-        }
-        return std.mem.eql(u8, self.src[start..self.index], keyword);
     }
 
     fn readIdentifier(self: *Lexer) Token {
         const start = self.index;
         const loc = self.currentLoc();
 
-        // Check if it starts with a dot (for map types like .hash)
-        if (self.peek() == '.') {
-            self.advance();
-            while (self.index < self.src.len) {
-                const ch = self.peek();
-                if ((ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or (ch >= '0' and ch <= '9') or ch == '_') {
-                    self.advance();
-                } else {
-                    break;
-                }
-            }
-            const lexeme = self.src[start..self.index];
-
-            // Check for map types
-            const kind: TokenKind = if (std.mem.eql(u8, lexeme, ".hash")) .map_type_hash else if (std.mem.eql(u8, lexeme, ".array")) .map_type_array else if (std.mem.eql(u8, lexeme, ".ringbuf")) .map_type_ringbuf else if (std.mem.eql(u8, lexeme, ".lru_hash")) .map_type_lru_hash else if (std.mem.eql(u8, lexeme, ".prog_array")) .map_type_prog_array else .identifier;
-
-            return Token{
-                .kind = kind,
-                .lexeme = lexeme,
-                .loc = loc,
-                .int_value = 0,
-            };
-        }
-
         while (self.index < self.src.len) {
             const ch = self.peek();
             if ((ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or (ch >= '0' and ch <= '9') or ch == '_') {
                 self.advance();
-            } else {
-                break;
-            }
+            } else break;
         }
-
         const lexeme = self.src[start..self.index];
 
-        // Check for keywords
-        const kind: TokenKind = if (std.mem.eql(u8, lexeme, "unit")) .keyword_unit else if (std.mem.eql(u8, lexeme, "section")) .keyword_section else if (std.mem.eql(u8, lexeme, "license")) .keyword_license else if (std.mem.eql(u8, lexeme, "return")) .keyword_return else if (std.mem.eql(u8, lexeme, "reg")) .keyword_reg else if (std.mem.eql(u8, lexeme, "imm")) .keyword_imm else if (std.mem.eql(u8, lexeme, "map")) .keyword_map else if (std.mem.eql(u8, lexeme, "type")) .keyword_type else if (std.mem.eql(u8, lexeme, "key")) .keyword_key else if (std.mem.eql(u8, lexeme, "value")) .keyword_value else if (std.mem.eql(u8, lexeme, "max")) .keyword_max else if (std.mem.eql(u8, lexeme, "if")) .keyword_if else if (std.mem.eql(u8, lexeme, "guard")) .keyword_guard else if (std.mem.eql(u8, lexeme, "heap")) .keyword_heap else if (std.mem.eql(u8, lexeme, "u32")) .type_u32 else if (std.mem.eql(u8, lexeme, "u64")) .type_u64 else if (std.mem.eql(u8, lexeme, "i32")) .type_i32 else if (std.mem.eql(u8, lexeme, "i64")) .type_i64 else .identifier;
+        const kind: TokenKind =
+            if (std.mem.eql(u8, lexeme, "unit")) .keyword_unit else if (std.mem.eql(u8, lexeme, "section")) .keyword_section else if (std.mem.eql(u8, lexeme, "license")) .keyword_license else if (std.mem.eql(u8, lexeme, "return")) .keyword_return else if (std.mem.eql(u8, lexeme, "reg")) .keyword_reg else if (std.mem.eql(u8, lexeme, "imm")) .keyword_imm else if (std.mem.eql(u8, lexeme, "map")) .keyword_map else if (std.mem.eql(u8, lexeme, "type")) .keyword_type else if (std.mem.eql(u8, lexeme, "key")) .keyword_key else if (std.mem.eql(u8, lexeme, "value")) .keyword_value else if (std.mem.eql(u8, lexeme, "max")) .keyword_max else if (std.mem.eql(u8, lexeme, "if")) .keyword_if else if (std.mem.eql(u8, lexeme, "guard")) .keyword_guard else if (std.mem.eql(u8, lexeme, "heap")) .keyword_heap else if (std.mem.eql(u8, lexeme, "u32")) .type_u32 else if (std.mem.eql(u8, lexeme, "u64")) .type_u64 else if (std.mem.eql(u8, lexeme, "i32")) .type_i32 else if (std.mem.eql(u8, lexeme, "i64")) .type_i64 else .identifier;
 
-        return Token{
-            .kind = kind,
-            .lexeme = lexeme,
-            .loc = loc,
-            .int_value = 0,
-        };
+        return Token{ .kind = kind, .lexeme = lexeme, .loc = loc, .int_value = 0 };
     }
 
     fn readNumber(self: *Lexer) !Token {
@@ -154,12 +104,9 @@ pub const Lexer = struct {
             self.advance();
         }
 
-        // Check for hex literal (0x...)
-        if (self.index < self.src.len - 1 and self.src[self.index] == '0' and self.src[self.index + 1] == 'x') {
-            self.advance(); // consume '0'
-            self.advance(); // consume 'x'
-
-            // Parse hex digits
+        if (self.index + 1 < self.src.len and self.src[self.index] == '0' and self.src[self.index + 1] == 'x') {
+            self.advance();
+            self.advance();
             var has_digits = false;
             while (self.index < self.src.len) {
                 const ch = self.peek();
@@ -175,54 +122,30 @@ pub const Lexer = struct {
                     value = value * 16 + @as(i64, ch - 'A' + 10);
                     has_digits = true;
                     self.advance();
-                } else {
-                    break;
-                }
+                } else break;
             }
-
-            if (!has_digits) {
-                return error.InvalidCharacter;
-            }
+            if (!has_digits) return error.InvalidCharacter;
         } else {
-            // Parse decimal digits
-            while (self.index < self.src.len) {
-                const ch = self.peek();
-                if (ch >= '0' and ch <= '9') {
-                    value = value * 10 + @as(i64, ch - '0');
-                    self.advance();
-                } else {
-                    break;
-                }
+            while (self.index < self.src.len and self.peek() >= '0' and self.peek() <= '9') {
+                value = value * 10 + @as(i64, self.peek() - '0');
+                self.advance();
             }
         }
 
-        if (negative) {
-            value = -value;
-        }
-
+        if (negative) value = -value;
         const lexeme = self.src[start..self.index];
-
-        return Token{
-            .kind = .number,
-            .lexeme = lexeme,
-            .loc = loc,
-            .int_value = value,
-        };
+        return Token{ .kind = .number, .lexeme = lexeme, .loc = loc, .int_value = value };
     }
 
     fn readString(self: *Lexer) !Token {
         const start = self.index;
         const loc = self.currentLoc();
-
-        if (self.peek() != '"') {
-            return error.ExpectedStringLiteral;
-        }
-        self.advance(); // consume opening quote
-
+        if (self.peek() != '"') return error.ExpectedStringLiteral;
+        self.advance();
         while (self.index < self.src.len) {
             const ch = self.peek();
             if (ch == '"') {
-                self.advance(); // consume closing quote
+                self.advance();
                 const lexeme = self.src[start..self.index];
                 return Token{
                     .kind = .string_literal,
@@ -231,7 +154,6 @@ pub const Lexer = struct {
                     .int_value = 0,
                 };
             } else if (ch == '\\') {
-                // Handle escape sequences
                 self.advance();
                 if (self.index >= self.src.len) {
                     return error.UnterminatedString;
@@ -247,144 +169,71 @@ pub const Lexer = struct {
                 self.advance();
             }
         }
-
         return error.UnterminatedString;
     }
 
     pub fn next(self: *Lexer) !Token {
-        // Skip whitespace and comments
         while (true) {
             self.skipWhitespace();
-            if (self.index >= self.src.len) {
-                return Token{
-                    .kind = .eof,
-                    .lexeme = "",
-                    .loc = self.currentLoc(),
-                    .int_value = 0,
-                };
-            }
-
-            // Try to skip comment
+            if (self.index >= self.src.len) return Token{ .kind = .eof, .lexeme = "", .loc = self.currentLoc(), .int_value = 0 };
             const before = self.index;
-            self.skipComment() catch |err| {
-                if (err == error.UnterminatedComment) {
-                    return Token{
-                        .kind = .eof,
-                        .lexeme = "",
-                        .loc = self.currentLoc(),
-                        .int_value = 0,
-                    };
-                }
-                return err;
-            };
-            if (self.index == before) {
-                break; // No comment skipped, proceed with tokenization
-            }
+            self.skipComment() catch {};
+            if (self.index == before) break;
         }
 
         const loc = self.currentLoc();
         const ch = self.peek();
 
-        // Check for dot-prefixed identifiers (map types like .hash)
-        if (ch == '.' and self.index + 1 < self.src.len) {
-            const next_ch = self.src[self.index + 1];
-            if ((next_ch >= 'a' and next_ch <= 'z') or (next_ch >= 'A' and next_ch <= 'Z') or next_ch == '_') {
-                return self.readIdentifier();
-            }
-        }
+        if ((ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or ch == '_') return self.readIdentifier();
+        if ((ch >= '0' and ch <= '9') or ch == '-') return self.readNumber();
+        if (ch == '"') return self.readString();
 
-        // Identifiers and keywords
-        if ((ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or ch == '_') {
-            return self.readIdentifier();
-        }
-
-        // Numbers
-        if ((ch >= '0' and ch <= '9') or ch == '-') {
-            return self.readNumber();
-        }
-
-        // String literals
-        if (ch == '"') {
-            return self.readString();
-        }
-
-        // Punctuation
         switch (ch) {
             '{' => {
                 self.advance();
-                return Token{
-                    .kind = .l_brace,
-                    .lexeme = self.src[self.index - 1 .. self.index],
-                    .loc = loc,
-                    .int_value = 0,
-                };
+                return Token{ .kind = .l_brace, .lexeme = self.src[self.index - 1 .. self.index], .loc = loc, .int_value = 0 };
             },
             '}' => {
                 self.advance();
-                return Token{
-                    .kind = .r_brace,
-                    .lexeme = self.src[self.index - 1 .. self.index],
-                    .loc = loc,
-                    .int_value = 0,
-                };
-            },
-            '=' => {
-                self.advance();
-                return Token{
-                    .kind = .equals,
-                    .lexeme = self.src[self.index - 1 .. self.index],
-                    .loc = loc,
-                    .int_value = 0,
-                };
-            },
-            ':' => {
-                self.advance();
-                return Token{
-                    .kind = .colon,
-                    .lexeme = self.src[self.index - 1 .. self.index],
-                    .loc = loc,
-                    .int_value = 0,
-                };
+                return Token{ .kind = .r_brace, .lexeme = self.src[self.index - 1 .. self.index], .loc = loc, .int_value = 0 };
             },
             '(' => {
                 self.advance();
-                return Token{
-                    .kind = .l_paren,
-                    .lexeme = self.src[self.index - 1 .. self.index],
-                    .loc = loc,
-                    .int_value = 0,
-                };
+                return Token{ .kind = .l_paren, .lexeme = self.src[self.index - 1 .. self.index], .loc = loc, .int_value = 0 };
             },
             ')' => {
                 self.advance();
-                return Token{
-                    .kind = .r_paren,
-                    .lexeme = self.src[self.index - 1 .. self.index],
-                    .loc = loc,
-                    .int_value = 0,
-                };
+                return Token{ .kind = .r_paren, .lexeme = self.src[self.index - 1 .. self.index], .loc = loc, .int_value = 0 };
+            },
+            ':' => {
+                self.advance();
+                return Token{ .kind = .colon, .lexeme = self.src[self.index - 1 .. self.index], .loc = loc, .int_value = 0 };
             },
             '.' => {
                 self.advance();
-                return Token{
-                    .kind = .dot,
-                    .lexeme = self.src[self.index - 1 .. self.index],
-                    .loc = loc,
-                    .int_value = 0,
-                };
+                return Token{ .kind = .dot, .lexeme = self.src[self.index - 1 .. self.index], .loc = loc, .int_value = 0 };
             },
             '*' => {
                 self.advance();
-                return Token{
-                    .kind = .star,
-                    .lexeme = self.src[self.index - 1 .. self.index],
-                    .loc = loc,
-                    .int_value = 0,
-                };
+                return Token{ .kind = .star, .lexeme = self.src[self.index - 1 .. self.index], .loc = loc, .int_value = 0 };
             },
-            else => {
-                return error.InvalidCharacter;
+            '+' => {
+                self.advance();
+                if (self.peek() == '=') {
+                    self.advance();
+                    return Token{ .kind = .plus_equals, .lexeme = self.src[self.index - 2 .. self.index], .loc = loc, .int_value = 0 };
+                }
+                return error.InvalidCharacter; // '+' by itself is not valid
             },
+            '=' => {
+                self.advance();
+                return Token{ .kind = .equals, .lexeme = self.src[self.index - 1 .. self.index], .loc = loc, .int_value = 0 };
+            },
+            ';' => {
+                self.advance();
+                return Token{ .kind = .semicolon, .lexeme = self.src[self.index - 1 .. self.index], .loc = loc, .int_value = 0 };
+            },
+            else => return error.InvalidCharacter,
         }
     }
 };
