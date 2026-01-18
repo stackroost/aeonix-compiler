@@ -1,0 +1,17 @@
+[package]
+name    = "solnix-compiler"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "solnixc"
+path = "src/main.rs"
+
+[dependencies]
+anyhow   = "1.0"  
+llvm-sys = { version = "211.0.0", features = ["prefer-dynamic"] }
+thiserror = "1.0"
+miette   = { version = "7.0", features = ["fancy"] }
+
+[build-dependencies]
+cc = "1.0"

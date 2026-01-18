@@ -1,0 +1,20 @@
+map connection_counter {
+    type: .hash;
+    key: u32;
+    value: u64;
+    max: 1024;
+}
+
+unit filter_packets {
+    section: "xdp";
+    license: "GPL";
+
+    reg src_ip = ctx.load_u32(26);
+    heap count_ptr = connection_counter.lookup(src_ip);
+
+    if guard(count_ptr) {
+        *count_ptr += 1;
+    }
+
+    return 1;
+}
