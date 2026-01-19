@@ -1,18 +1,24 @@
-use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
-    let llvm_config = std::env::var("LLVM_SYS_210_PREFIX")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/usr/lib/llvm-21"));
+    let llvm_include = Command::new("llvm-config-21")
+        .arg("--includedir")
+        .output()
+        .unwrap();
+    let llvm_include = String::from_utf8(llvm_include.stdout).unwrap();
 
-    let llvm_include = llvm_config.join("include");
-    let llvm_lib     = llvm_config.join("lib");
+    let out = Command::new("bindgen")
+        .arg(format!("{}/llvm-c/Core.h", llvm_include.trim()))
+        .arg(format!("{}/llvm-c/Target.h", llvm_include.trim()))
+        .arg(format!("{}/llvm-c/TargetMachine.h", llvm_include.trim()))
+        .arg("--allowlist-function")
+        .arg("LLVM.*")
+        .arg("-o")
+        .arg("src/llvm.rs")
+        .output()
+        .unwrap();
 
-    println!("cargo:rustc-env=LLVM_SYS_210_PREFIX={}", llvm_config.display());
-    
-    println!("cargo:rustc-link-search=native={}", llvm_lib.display());
-    println!("cargo:rustc-link-lib=dylib=LLVM-21");
-    println!("cargo:rustc-link-arg=-Wl,-rpath,{}", llvm_lib.display());
-    
-    println!("cargo:rerun-if-changed=build.rs");
+    if !out.status.success() {
+        panic!("bindgen failed");
+    }
 }
