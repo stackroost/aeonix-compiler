@@ -1,10 +1,10 @@
-// src/lexer/mod.rs
+
 #![allow(unused_assignments)]
 
 use miette::{Diagnostic, SourceSpan};
 use crate::parser::TokenKind;
 
-/// Lexer error types with source location
+
 #[derive(Debug, Diagnostic, thiserror::Error)]
 pub enum LexError {
     #[error("Unterminated comment")]
@@ -24,7 +24,6 @@ pub enum LexError {
     ExpectedStringLiteral { #[allow(unused)] span: SourceSpan },
 }
 
-/// Lexer that tokenizes Solnix source code
 pub struct Lexer<'src> {
     src: &'src str,
     bytes: &'src [u8],
@@ -91,16 +90,14 @@ impl<'src> Lexer<'src> {
         if self.peek() == '/' {
             self.advance();
             if self.peek() == '/' {
-                // Single-line comment
                 self.advance();
                 while self.index < self.bytes.len() && self.peek() != '\n' {
                     self.advance();
                 }
                 if self.index < self.bytes.len() {
-                    self.advance(); // consume '\n'
+                    self.advance();
                 }
             } else if self.peek() == '*' {
-                // Multi-line comment
                 self.advance();
                 let start_loc = self.current_loc();
                 while self.index < self.bytes.len() {
@@ -115,7 +112,6 @@ impl<'src> Lexer<'src> {
                     span: (start_loc.offset..self.index).into(),
                 });
             } else {
-                // Not a comment, backtrack
                 self.index -= 1;
                 self.column -= 1;
             }
@@ -138,7 +134,6 @@ impl<'src> Lexer<'src> {
 
         let lexeme = &self.src[start..self.index];
         
-        // Keyword matching
         let kind = match lexeme {
             "unit" => crate::parser::TokenKind::KeywordUnit,
             "section" => crate::parser::TokenKind::KeywordSection,
@@ -175,7 +170,6 @@ impl<'src> Lexer<'src> {
             self.advance();
         }
 
-        // Hex number: 0x...
         if self.index + 1 < self.bytes.len() 
             && self.peek() == '0' 
             && self.peek_next() == 'x' 
@@ -212,7 +206,6 @@ impl<'src> Lexer<'src> {
                 });
             }
         } else {
-            // Decimal number
             while self.index < self.bytes.len() {
                 let ch = self.peek();
                 if let Some(digit) = ch.to_digit(10) {
@@ -242,7 +235,7 @@ impl<'src> Lexer<'src> {
             });
         }
 
-        self.advance(); // consume opening quote
+        self.advance();
         let content_start = self.index;
 
         while self.index < self.bytes.len() {
@@ -289,7 +282,6 @@ impl<'src> Lexer<'src> {
         })
     }
 
-    /// Main entry point: get next token
     pub fn next_token(&mut self) -> Result<crate::parser::Token, LexError> {
         loop {
             self.skip_whitespace();
@@ -298,13 +290,11 @@ impl<'src> Lexer<'src> {
                 return Ok(crate::parser::Token::eof(self.index));
             }
 
-            // Save position to detect if we consumed a comment
             let before = self.index;
             if let Err(e) = self.skip_comment() {
                 return Err(e);
             }
             
-            // If we didn't advance, we're not in a comment
             if self.index == before {
                 break;
             }
@@ -313,22 +303,18 @@ impl<'src> Lexer<'src> {
         let loc = self.current_loc();
         let ch = self.peek();
 
-        // Identifier or keyword
         if ch.is_alphabetic() || ch == '_' {
             return Ok(self.read_identifier());
         }
 
-        // Number (including negative)
         if ch.is_ascii_digit() || ch == '-' {
             return self.read_number();
         }
 
-        // String literal
         if ch == '"' {
             return self.read_string();
         }
 
-        // Single/double character tokens
         match ch {
             '{' => {
                 self.advance();

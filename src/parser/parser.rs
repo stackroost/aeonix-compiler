@@ -1,4 +1,4 @@
-// src/parser/parser.rs
+
 #![allow(unused_assignments)]
 
 use super::{Token, TokenKind};
@@ -6,7 +6,7 @@ use crate::lexer::Lexer;
 use anyhow::Result;
 use miette::{Diagnostic, SourceSpan};
 
-/// Parser error with source location and context
+#[allow(unused)]
 #[derive(Debug, Diagnostic, thiserror::Error)]
 #[error("Parse error: {message}")]
 pub struct ParseError {
@@ -34,7 +34,6 @@ impl ParseError {
     }
 }
 
-/// Main parser struct that owns the token stream
 pub struct Parser<'src> {
     _src: &'src str,
     lexer: Lexer<'src>,
@@ -42,7 +41,6 @@ pub struct Parser<'src> {
 }
 
 impl<'src> Parser<'src> {
-    /// Initialize parser with source code
     pub fn new(src: &'src str) -> Result<Self, ParseError> {
         let mut lexer = Lexer::new(src);
         let current = lexer.next_token()
@@ -51,29 +49,25 @@ impl<'src> Parser<'src> {
         Ok(Self { _src: src, lexer, current })
     }
 
-    /// Advance to next token
     pub fn advance(&mut self) -> Result<(), ParseError> {
         self.current = self.lexer.next_token()
             .map_err(|_e| ParseError::new(self.current.loc, "Lexer error"))?;
         Ok(())
     }
 
-    /// Check if current token matches expected kind
     pub fn check(&self, kind: TokenKind) -> bool {
         self.current.kind == kind
     }
 
-    /// Match and consume token if it matches
     pub fn r#match(&mut self, kind: TokenKind) -> bool {
         if self.check(kind) {
-            let _ = self.advance(); // Ignore error for match
+            let _ = self.advance();
             true
         } else {
             false
         }
     }
 
-    /// Expect a specific token kind, error if not found
     pub fn expect(&mut self, kind: TokenKind) -> Result<Token, ParseError> {
         if self.check(kind) {
             let tok = self.current.clone();
@@ -87,12 +81,10 @@ impl<'src> Parser<'src> {
         }
     }
 
-    /// Create a parse error at current location
     pub fn error(&self, message: impl Into<String>) -> ParseError {
         ParseError::new(self.current.loc, message)
     }
 
-    /// Create a parse error with help text
     pub fn error_with_help(&self, message: impl Into<String>, help: impl Into<String>) -> ParseError {
         ParseError::new(self.current.loc, message)
             .with_help(help)
@@ -102,17 +94,14 @@ impl<'src> Parser<'src> {
         &self.current
     }
 
-    /// Get a copy of the current token's location
     pub fn current_loc(&self) -> crate::parser::SourceLoc {
         self.current.loc
     }
 
-    /// Convenience: get the current token's kind
     pub fn current_kind(&self) -> TokenKind {
         self.current.kind
     }
 
-    /// Convenience: get the current token's lexeme
     pub fn _current_lexeme(&self) -> &str {
         &self.current.lexeme
     }
