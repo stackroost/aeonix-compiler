@@ -1,9 +1,9 @@
-// src/parser/token.rs
+
 #![allow(unused)]
 
 use std::fmt;
 
-/// Source location with line, column, and byte offset
+#[allow(unused)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceLoc {
     pub line: usize,
@@ -17,17 +17,14 @@ impl SourceLoc {
         Self { line, column, offset }
     }
 
-    /// Returns a zero location (useful for EOF)
     #[inline]
     pub const fn _zero() -> Self {
         Self::new(0, 0, 0)
     }
 }
 
-/// Token types representing Solnix language syntax
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TokenKind {
-    // Keywords
     KeywordUnit,
     KeywordSection,
     KeywordLicense,
@@ -43,20 +40,17 @@ pub enum TokenKind {
     KeywordGuard,
     KeywordHeap,
 
-    // Map types
     MapTypeHash,
     MapTypeArray,
     MapTypeRingbuf,
     MapTypeLruHash,
     MapTypeProgArray,
 
-    // Primitive types
     TypeU32,
     TypeU64,
     TypeI32,
     TypeI64,
 
-    // Punctuation
     LBrace,
     RBrace,
     LParen,
@@ -68,17 +62,14 @@ pub enum TokenKind {
     Star,
     Semicolon,
 
-    // Literals and identifiers
     Identifier,
     StringLiteral,
     Number,
 
-    // End of file
     Eof,
 }
 
 impl TokenKind {
-    /// Check if this token is a keyword
     #[inline]
     pub fn _is_keyword(&self) -> bool {
         matches!(self,
@@ -99,7 +90,6 @@ impl TokenKind {
         )
     }
 
-    /// Check if this token is a map type
     #[inline]
     pub fn _is_map_type(&self) -> bool {
         matches!(self,
@@ -111,7 +101,6 @@ impl TokenKind {
         )
     }
 
-    /// Check if this token is a primitive type
     #[inline]
     pub fn _is_primitive_type(&self) -> bool {
         matches!(self,
@@ -126,7 +115,6 @@ impl TokenKind {
 impl fmt::Display for TokenKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            // Keywords
             Self::KeywordUnit => write!(f, "unit"),
             Self::KeywordSection => write!(f, "section"),
             Self::KeywordLicense => write!(f, "license"),
@@ -142,20 +130,17 @@ impl fmt::Display for TokenKind {
             Self::KeywordGuard => write!(f, "guard"),
             Self::KeywordHeap => write!(f, "heap"),
 
-            // Map types
             Self::MapTypeHash => write!(f, "hash"),
             Self::MapTypeArray => write!(f, "array"),
             Self::MapTypeRingbuf => write!(f, "ringbuf"),
             Self::MapTypeLruHash => write!(f, "lru_hash"),
             Self::MapTypeProgArray => write!(f, "prog_array"),
 
-            // Primitive types
             Self::TypeU32 => write!(f, "u32"),
             Self::TypeU64 => write!(f, "u64"),
             Self::TypeI32 => write!(f, "i32"),
             Self::TypeI64 => write!(f, "i64"),
 
-            // Punctuation
             Self::LBrace => write!(f, "{{"),
             Self::RBrace => write!(f, "}}"),
             Self::LParen => write!(f, "("),
@@ -167,7 +152,7 @@ impl fmt::Display for TokenKind {
             Self::Star => write!(f, "*"),
             Self::Semicolon => write!(f, ";"),
 
-            // Literals
+
             Self::Identifier => write!(f, "identifier"),
             Self::StringLiteral => write!(f, "string literal"),
             Self::Number => write!(f, "number"),
@@ -177,19 +162,16 @@ impl fmt::Display for TokenKind {
     }
 }
 
-/// A lexical token with its kind, text, location, and optional value
 #[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
-    pub lexeme: String,  // Owned string for safety (avoids lifetime hell)
+    pub lexeme: String,
     pub loc: SourceLoc,
 
-    /// Pre-parsed integer value for number tokens
     pub int_value: Option<i64>,
 }
 
 impl Token {
-    /// Create a new token without an integer value
     pub fn new(kind: TokenKind, lexeme: impl Into<String>, loc: SourceLoc) -> Self {
         Self {
             kind,
@@ -199,7 +181,6 @@ impl Token {
         }
     }
 
-    /// Create a numeric token with a pre-parsed value
     pub fn new_number(lexeme: impl Into<String>, loc: SourceLoc, value: i64) -> Self {
         Self {
             kind: TokenKind::Number,
@@ -209,7 +190,6 @@ impl Token {
         }
     }
 
-    /// Create an EOF token
     pub fn eof(offset: usize) -> Self {
         Self {
             kind: TokenKind::Eof,

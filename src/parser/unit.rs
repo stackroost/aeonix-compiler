@@ -20,7 +20,6 @@ pub fn parse_unit(parser: &mut Parser) -> Result<Unit, ParseError> {
             expect_token(parser, TokenKind::Colon)?;
             let s = parser.expect(TokenKind::StringLiteral)?;
             
-            // Strip quotes from string literal
             let txt = s.lexeme.trim_matches('"').to_string();
             sections.push(txt);
             expect_token(parser, TokenKind::Semicolon)?;
@@ -51,7 +50,6 @@ pub fn parse_unit(parser: &mut Parser) -> Result<Unit, ParseError> {
     })
 }
 
-/// Parse a statement and append to body
 fn parse_stmt(parser: &mut Parser, body: &mut Vec<Stmt>) -> Result<(), ParseError> {
     if parser.r#match(TokenKind::KeywordReg) {
         let var_loc = parser.current_loc();
@@ -233,7 +231,6 @@ pub fn parse_expr(parser: &mut Parser) -> Result<Expr, ParseError> {
         });
     }
 
-    // Just a variable reference
     Ok(Expr {
         kind: ExprKind::Variable(receiver_tok.lexeme),
         loc: receiver_tok.loc,

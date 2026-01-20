@@ -1,4 +1,4 @@
-// src/sema/mod.rs
+
 pub mod map;
 pub mod unit;
 pub mod section;
@@ -6,8 +6,7 @@ pub mod section;
 use crate::ast::Program;
 use crate::diagnostics::DiagnosticReporter;
 use std::collections::HashSet;
-
-/// Semantic validation errors
+    
 #[derive(Debug, thiserror::Error)]
 pub enum SemanticError {
     #[error("Map validation failed")]
@@ -17,19 +16,16 @@ pub enum SemanticError {
     UnitError(#[from] unit::UnitValidationError),
 }
 
-/// Validate entire program semantics
 pub fn check_program(
     program: &Program,
     diagnostics: &mut DiagnosticReporter,
 ) -> Result<(), SemanticError> {
     let mut map_names = HashSet::new();
 
-    // Validate all maps
     for map_decl in &program.maps {
         map::check_map(map_decl, diagnostics, &mut map_names)?;
     }
 
-    // Validate all units
     for unit_decl in &program.units {
         unit::check_unit(unit_decl, diagnostics)?;
     }

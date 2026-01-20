@@ -1,7 +1,6 @@
-// src/ast/map.rs
+
 use crate::parser::SourceLoc;
 
-/// eBPF map declaration (hash, array, ringbuf, etc.)
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct MapDecl {
@@ -13,7 +12,6 @@ pub struct MapDecl {
     pub loc: SourceLoc,
 }
 
-/// eBPF map types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(unused)]
 pub enum MapType {
@@ -25,7 +23,6 @@ pub enum MapType {
     PerfEventArray,
 }
 
-/// Primitive types for eBPF registers and immediates
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Type {
     U32,

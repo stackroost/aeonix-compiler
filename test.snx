@@ -15,6 +15,6 @@ unit filter_packets {
     if guard(count_ptr) {
         *count_ptr += 1;
     }
-
+    
     return 1;
 }

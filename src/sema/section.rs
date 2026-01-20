@@ -1,37 +1,23 @@
-// src/sema/section.rs
+
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-/// Static list of valid eBPF section names
 const STATIC_SECTIONS: &[&str] = &[
-    // XDP
     "xdp", "xdp/ingress", "xdp/egress", "xdp/frags", "xdp/devmap", "xdp/cpumap", "xdp/offload",
-    
-    // TC (Traffic Control)
     "tc", "classifier", "action", "tcx/ingress", "tcx/egress", "tc/ingress", "tc/egress",
-    
-    // Tracepoints
     "tracepoint", "tp", "raw_tracepoint", "raw_tp", "tp_btf",
-    
-    // Cgroup
     "cgroup_skb", "cgroup_sock", "cgroup_skb/ingress", "cgroup_skb/egress", "sockops", "sk_msg",
-    
-    // Infrastructure
     "maps", "license", "version", "perf_event",
 ];
 
-/// Section validator for eBPF program types
 pub struct SectionValidator;
 
 impl SectionValidator {
-    /// Check if a section name is valid for eBPF
     pub fn is_valid(section: &str) -> bool {
-        // Check static sections first
         if STATIC_SECTIONS.contains(&section) {
             return true;
         }
 
-        // Tracepoint patterns
         if section.starts_with("tracepoint/") || section.starts_with("tp/") {
             let path = section.strip_prefix("tp/")
                 .or_else(|| section.strip_prefix("tracepoint/"))
@@ -43,7 +29,6 @@ impl SectionValidator {
                 && Self::is_valid_identifier(parts[1]);
         }
 
-        // Raw tracepoint
         if section.starts_with("raw_tracepoint/") || section.starts_with("raw_tp/") {
             let event = section.strip_prefix("raw_tp/")
                 .or_else(|| section.strip_prefix("raw_tracepoint/"))
@@ -51,12 +36,10 @@ impl SectionValidator {
             return Self::is_valid_identifier(event);
         }
 
-        // TP BTF
         if section.starts_with("tp_btf/") {
             return Self::is_valid_identifier(&section[7..]);
         }
 
-        // Kprobes
         if section.starts_with("kprobe/") || section.starts_with("kretprobe/") {
             let func = section.strip_prefix("kprobe/")
                 .or_else(|| section.strip_prefix("kretprobe/"))
@@ -64,7 +47,6 @@ impl SectionValidator {
             return Self::is_valid_identifier(func);
         }
 
-        // Uprobes
         if section.starts_with("uprobe/") || section.starts_with("uretprobe/") {
             let sym = section.strip_prefix("uprobe/")
                 .or_else(|| section.strip_prefix("uretprobe/"))
@@ -72,7 +54,6 @@ impl SectionValidator {
             return Self::is_valid_identifier(sym);
         }
 
-        // TC extras
         if section.starts_with("tc/") || section.starts_with("classifier/") || section.starts_with("action/") {
             let extras = section.strip_prefix("tc/")
                 .or_else(|| section.strip_prefix("classifier/"))
@@ -85,7 +66,6 @@ impl SectionValidator {
             if extras == "ingress" || extras == "egress" {
                 return true;
             }
-            // Allow alphanumeric + _ . - for custom TC sections
             return Self::is_valid_tc_extras(extras);
         }
 
@@ -110,7 +90,6 @@ impl SectionValidator {
         chars.all(|c| c.is_alphanumeric() || c == '_' || c == '.')
     }
 
-    /// Returns help text for valid section formats
     pub fn valid_formats() -> &'static str {
         r#"Valid eBPF section formats:
   Networking:

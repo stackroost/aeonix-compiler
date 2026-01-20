@@ -1,6 +1,7 @@
+use crate::emit::ebpf_c::program::emit_program;
 use crate::parser;
 use crate::source_manager::SourceManager;
-use miette::{IntoDiagnostic, WrapErr, Report};
+use miette::{IntoDiagnostic, Report, WrapErr};
 use std::fs;
 use std::path::Path;
 
@@ -29,7 +30,7 @@ pub fn compile(input_path: &Path, output_path: &Path) -> Result<(), miette::Repo
     let mut sources = SourceManager::new();
     let _file_id = sources.add_file(input_path.display().to_string(), src.clone());
 
-    let _program = match parser::parse(&src) {
+    let program = match parser::parse(&src) {
         Ok(prog) => prog,
         Err(e) => {
             let report: Report = e.into();
@@ -37,10 +38,11 @@ pub fn compile(input_path: &Path, output_path: &Path) -> Result<(), miette::Repo
             return Err(report);
         }
     };
+    let program_ir = crate::ir::lower_program(&program).map_err(|e| miette::miette!("{e:?}"))?;
 
-    fs::write(output_path, src)
-        .into_diagnostic()
-        .wrap_err("Failed to write output file")?;
+    emit_program(&program_ir, output_path)
+        .map_err(|e| miette::miette!("{:?}", e))
+        .wrap_err("Failed to emit program")?;
 
     Ok(())
 }

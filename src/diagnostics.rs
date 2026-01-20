@@ -4,7 +4,6 @@ use miette::{Diagnostic, SourceSpan};
 use std::ops::Range;
 use thiserror::Error;
 
-// Newtype pattern for type safety
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FileId(pub u32);
 
@@ -50,7 +49,6 @@ impl Span {
     }
 }
 
-// Compile-time error categories
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorCategory {
     Parse,

@@ -1,6 +1,5 @@
 use crate::parser::SourceLoc;
 
-/// eBPF program unit (XDP, TC, tracepoint, cgroup, etc.)
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct Unit {
@@ -11,7 +10,6 @@ pub struct Unit {
     pub body: Vec<Stmt>,
 }
 
-/// Statement in an eBPF program body
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct Stmt {
@@ -29,7 +27,6 @@ pub enum StmtKind {
     IfGuard(IfGuard),
 }
 
-/// Variable assignment: `x = value` or `x += value`
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct Assignment {
@@ -38,16 +35,13 @@ pub struct Assignment {
     pub value: Box<Expr>,
 }
 
-/// Assignment operators
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(unused)]
 pub enum AssignmentOp {
-    Assign,      // =
-    AddAssign,   // +=
-    // Add more: SubAssign, MulAssign, etc. as needed
+    Assign,     
+    AddAssign,  
 }
 
-/// If-guard statement: `if (condition) { body }`
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct IfGuard {
@@ -55,7 +49,6 @@ pub struct IfGuard {
     pub body: Vec<Stmt>,
 }
 
-/// Expression (produces a value)
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct Expr {
@@ -73,7 +66,6 @@ pub enum ExprKind {
     Dereference(Box<Expr>),
 }
 
-/// Variable declaration: `reg x: u32 = value;` or `imm x: u32 = value;`
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct VarDecl {
@@ -82,15 +74,13 @@ pub struct VarDecl {
     pub value: Box<Expr>,
 }
 
-/// Variable storage class
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(unused)]
 pub enum VarType {
-    Reg,  // Register variable
-    Imm,  // Immediate/constant variable
+    Reg,  
+    Imm,
 }
 
-/// Heap map lookup: `map[key]`
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct HeapLookup {
@@ -98,7 +88,6 @@ pub struct HeapLookup {
     pub key_expr: Box<Expr>,
 }
 
-/// Method call: `receiver.method(arg)`
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct MethodCall {
@@ -107,7 +96,6 @@ pub struct MethodCall {
     pub arg: Box<Expr>,
 }
 
-/// Heap variable declaration: `heap h = map[key];`
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct HeapVarDecl {
