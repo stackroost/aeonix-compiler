@@ -15,3 +15,4 @@ rustfmt.toml
 # OS files
 .DS_Store
 Thumbs.db
+vmlinux.h
