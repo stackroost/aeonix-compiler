@@ -1,5 +1,5 @@
 unit pass_all_traffic {
-    section: "sk_msg";
+    section: "cgroup/sock_addr";
     license: "GPL";
 
     return 0; 
