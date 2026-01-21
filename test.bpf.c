@@ -2,6 +2,11 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
+#ifndef TC_ACT_OK
+#define TC_ACT_OK 0
+#define TC_ACT_SHOT 2
+#define TC_ACT_UNSPEC -1
+#endif
 #ifndef XDP_ABORTED
 #define XDP_ABORTED 0
 #define XDP_DROP 1
@@ -19,20 +24,12 @@ struct {
 
 char LICENSE[] SEC("license") = "GPL";
 
-SEC("xdp")
-int filter_packets(struct xdp_md *ctx) {
+SEC("classifier")
+int pass_all_traffic(struct __sk_buff *ctx) {
     void *data = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;
 
-    if (data + 26 + 4 > data_end) return XDP_PASS;
-    __u32 src_ip = *(__u32 *)(data + 26);
-
-    __u32 key = src_ip;
-    __u64 *count_ptr = bpf_map_lookup_elem(&connection_counter, &key);
-    if (count_ptr) {
-        __sync_fetch_and_add(count_ptr, 1);
-    }
-
-    return 1;
+    if (data + 14 > data_end) return TC_ACT_OK;
+    return 0;
 }
 

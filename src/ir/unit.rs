@@ -11,6 +11,7 @@ pub struct UnitIr {
     pub next_var_id: u32,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct BasicBlock {
     pub id: BlockId,
@@ -21,6 +22,7 @@ pub struct BasicBlock {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BlockId(pub u32);
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Terminator {
     Return(Operand),

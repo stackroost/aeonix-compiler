@@ -1,5 +1,6 @@
 use crate::ast::Type;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Instruction {
     pub result: VarId,
@@ -11,6 +12,7 @@ pub struct Instruction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct VarId(pub u32);
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Opcode {
     LoadKey,
@@ -31,6 +33,7 @@ pub enum BinaryOp {
     Add,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Operand {
     Var(VarId),

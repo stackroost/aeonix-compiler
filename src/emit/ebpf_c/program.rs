@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::path::Path;
 
-use crate::ir::ProgramIr;
+use crate::{emit::ebpf_c::tc, ir::ProgramIr};
 
 use super::{helpers, maps, write, xdp};
 
@@ -11,10 +11,16 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
     emit_prelude(&mut c)?;
     helpers::emit_helpers(&mut c)?;
     maps::emit_maps(&mut c, &[])?;
-
+    
     for unit in &program.units {
-        match unit.sections.get(0).map(|s| s.as_str()).unwrap_or("unknown") {
+        match unit
+            .sections
+            .get(0)
+            .map(|s| s.as_str())
+            .unwrap_or("unknown")
+        {
             "xdp" => xdp::emit_xdp(&mut c, unit)?,
+            "classifier" | "tc" => tc::emit_tc(&mut c, unit)?,
             s => return Err(format!("Unsupported section: {}", s)),
         }
     }
@@ -24,13 +30,17 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
 }
 
 fn emit_prelude(out: &mut String) -> Result<(), String> {
-    // CO-RE/libbpf standard headers
     writeln!(out, "#include \"vmlinux.h\"").map_err(err)?;
     writeln!(out, "#include <bpf/bpf_helpers.h>").map_err(err)?;
     writeln!(out, "#include <bpf/bpf_endian.h>").map_err(err)?;
     writeln!(out).map_err(err)?;
 
-    // XDP return codes (usually in linux/bpf.h; define to avoid extra headers)
+    writeln!(out, "#ifndef TC_ACT_OK").map_err(err)?;
+    writeln!(out, "#define TC_ACT_OK 0").map_err(err)?;
+    writeln!(out, "#define TC_ACT_SHOT 2").map_err(err)?;
+    writeln!(out, "#define TC_ACT_UNSPEC -1").map_err(err)?;
+    writeln!(out, "#endif").map_err(err)?;
+
     writeln!(out, "#ifndef XDP_ABORTED").map_err(err)?;
     writeln!(out, "#define XDP_ABORTED 0").map_err(err)?;
     writeln!(out, "#define XDP_DROP 1").map_err(err)?;
