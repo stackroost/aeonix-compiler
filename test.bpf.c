@@ -15,6 +15,11 @@
 #define XDP_REDIRECT 4
 #endif
 
+#ifndef SK_PASS
+#define SK_PASS 1
+#define SK_DROP 0
+#endif
+
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, 1024);
@@ -24,12 +29,8 @@ struct {
 
 char LICENSE[] SEC("license") = "GPL";
 
-SEC("tcx/egress")
-int pass_all_traffic(struct __sk_buff *ctx) {
-    void *data = (void *)(long)ctx->data;
-    void *data_end = (void *)(long)ctx->data_end;
-
-    if (data + 14 > data_end) return TC_ACT_OK;
-    return TC_ACT_OK;
+SEC("sk_msg")
+int pass_all_traffic(struct sk_msg_md *msg) {
+    return SK_PASS;
 }
 

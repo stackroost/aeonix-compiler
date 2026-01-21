@@ -2,7 +2,10 @@ use std::fmt::Write;
 use std::path::Path;
 
 use super::{helpers, maps, write, xdp};
-use crate::{emit::ebpf_c::tc, ir::ProgramIr};
+use crate::{
+    emit::ebpf_c::{sk, tc},
+    ir::ProgramIr,
+};
 
 pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
     let mut c = String::new();
@@ -28,6 +31,11 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
 
             // TCX ingress
             "tcx/ingress" | "tc/ingress" => tc::emit_tc(&mut c, unit, "tcx/ingress")?,
+
+            // Socket
+            "sk_skb/stream_parser" => sk::emit_sk_skb(&mut c, unit, "sk_skb/stream_parser")?,
+            "sk_skb/stream_verdict" => sk::emit_sk_skb(&mut c, unit, "sk_skb/stream_verdict")?,
+            "sk_msg" => sk::emit_sk_msg(&mut c, unit)?,
 
             s => return Err(format!("Unsupported section: {}", s)),
         }
@@ -55,6 +63,12 @@ fn emit_prelude(out: &mut String) -> Result<(), String> {
     writeln!(out, "#define XDP_PASS 2").map_err(err)?;
     writeln!(out, "#define XDP_TX 3").map_err(err)?;
     writeln!(out, "#define XDP_REDIRECT 4").map_err(err)?;
+    writeln!(out, "#endif").map_err(err)?;
+    writeln!(out).map_err(err)?;
+
+    writeln!(out, "#ifndef SK_PASS").map_err(err)?;
+    writeln!(out, "#define SK_PASS 1").map_err(err)?;
+    writeln!(out, "#define SK_DROP 0").map_err(err)?;
     writeln!(out, "#endif").map_err(err)?;
     writeln!(out).map_err(err)?;
 

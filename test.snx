@@ -1,5 +1,5 @@
 unit pass_all_traffic {
-    section: "tc/egress";
+    section: "sk_msg";
     license: "GPL";
 
     return 0; 
