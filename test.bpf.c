@@ -29,8 +29,8 @@ struct {
 
 char LICENSE[] SEC("license") = "GPL";
 
-SEC("sk_msg")
-int pass_all_traffic(struct sk_msg_md *msg) {
-    return SK_PASS;
+SEC("cgroup/sock_addr")
+int pass_all_traffic(struct bpf_sock_addr *ctx) {
+    return 1; // allow connection
 }
 

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use super::{helpers, maps, write, xdp};
 use crate::{
-    emit::ebpf_c::{sk, tc},
+    emit::ebpf_c::{cgroup, sk, tc},
     ir::ProgramIr,
 };
 
@@ -36,6 +36,12 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
             "sk_skb/stream_parser" => sk::emit_sk_skb(&mut c, unit, "sk_skb/stream_parser")?,
             "sk_skb/stream_verdict" => sk::emit_sk_skb(&mut c, unit, "sk_skb/stream_verdict")?,
             "sk_msg" => sk::emit_sk_msg(&mut c, unit)?,
+
+            //cgroup
+            "cgroup/skb/ingress" => cgroup::emit_cgroup(&mut c, unit, "cgroup/skb/ingress")?,
+            "cgroup/skb/egress" => cgroup::emit_cgroup(&mut c, unit, "cgroup/skb/egress")?,
+            "cgroup/sock" => cgroup::emit_cgroup(&mut c, unit, "cgroup/sock")?,
+            "cgroup/sock_addr" => cgroup::emit_cgroup_sock_addr(&mut c, unit)?,
 
             s => return Err(format!("Unsupported section: {}", s)),
         }
