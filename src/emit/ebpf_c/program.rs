@@ -1,9 +1,8 @@
 use std::fmt::Write;
 use std::path::Path;
 
-use crate::{emit::ebpf_c::tc, ir::ProgramIr};
-
 use super::{helpers, maps, write, xdp};
+use crate::{emit::ebpf_c::tc, ir::ProgramIr};
 
 pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
     let mut c = String::new();
@@ -11,7 +10,7 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
     emit_prelude(&mut c)?;
     helpers::emit_helpers(&mut c)?;
     maps::emit_maps(&mut c, &[])?;
-    
+
     for unit in &program.units {
         match unit
             .sections
@@ -20,7 +19,16 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
             .unwrap_or("unknown")
         {
             "xdp" => xdp::emit_xdp(&mut c, unit)?,
-            "classifier" | "tc" => tc::emit_tc(&mut c, unit)?,
+
+            // Classic TC
+            "tc" | "classifier" => tc::emit_tc(&mut c, unit, "classifier")?,
+
+            // TCX egress (all aliases)
+            "tcx" | "tcx/egress" | "tc/egress" => tc::emit_tc(&mut c, unit, "tcx/egress")?,
+
+            // TCX ingress
+            "tcx/ingress" | "tc/ingress" => tc::emit_tc(&mut c, unit, "tcx/ingress")?,
+
             s => return Err(format!("Unsupported section: {}", s)),
         }
     }

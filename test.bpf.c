@@ -24,12 +24,12 @@ struct {
 
 char LICENSE[] SEC("license") = "GPL";
 
-SEC("classifier")
+SEC("tcx/egress")
 int pass_all_traffic(struct __sk_buff *ctx) {
     void *data = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;
 
     if (data + 14 > data_end) return TC_ACT_OK;
-    return 0;
+    return TC_ACT_OK;
 }
 
