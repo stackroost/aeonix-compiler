@@ -3,7 +3,7 @@ use std::path::Path;
 
 use super::{helpers, maps, write, xdp};
 use crate::{
-    emit::ebpf_c::{cgroup, sk, tc},
+    emit::ebpf_c::{cgroup, fentry, kprobe, raw_tracepoint, sk, tc, tracepoint},
     ir::ProgramIr,
 };
 
@@ -15,12 +15,13 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
     maps::emit_maps(&mut c, &[])?;
 
     for unit in &program.units {
-        match unit
+        let sec0 = unit
             .sections
             .get(0)
             .map(|s| s.as_str())
-            .unwrap_or("unknown")
-        {
+            .unwrap_or("unknown");
+
+        match sec0 {
             "xdp" => xdp::emit_xdp(&mut c, unit)?,
 
             // Classic TC
@@ -37,11 +38,29 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
             "sk_skb/stream_verdict" => sk::emit_sk_skb(&mut c, unit, "sk_skb/stream_verdict")?,
             "sk_msg" => sk::emit_sk_msg(&mut c, unit)?,
 
-            //cgroup
+            // cgroup
             "cgroup/skb/ingress" => cgroup::emit_cgroup(&mut c, unit, "cgroup/skb/ingress")?,
             "cgroup/skb/egress" => cgroup::emit_cgroup(&mut c, unit, "cgroup/skb/egress")?,
             "cgroup/sock" => cgroup::emit_cgroup(&mut c, unit, "cgroup/sock")?,
             "cgroup/sock_addr" => cgroup::emit_cgroup_sock_addr(&mut c, unit)?,
+
+            // kprobe / kretprobe
+            s if s.starts_with("kprobe/") || s.starts_with("kretprobe/") => {
+                kprobe::emit_kprobe(&mut c, unit, s)?
+            }
+
+            // raw_tracepoint/<name>
+            s if s.starts_with("raw_tracepoint/") => {
+                raw_tracepoint::emit_raw_tracepoint(&mut c, unit, s)?
+            }
+
+            // tracepoint/<category>/<name>
+            s if s.starts_with("tracepoint/") => tracepoint::emit_tracepoint(&mut c, unit, s)?,
+
+            // fentry/<func> and fexit/<func>
+            s if s.starts_with("fentry/") || s.starts_with("fexit/") => {
+                fentry::emit_fentry(&mut c, unit, s)?
+            }
 
             s => return Err(format!("Unsupported section: {}", s)),
         }

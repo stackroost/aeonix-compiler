@@ -1,6 +1,5 @@
-unit pass_all_traffic {
-    section: "cgroup/sock_addr";
+unit fe_execve {
+    section: "fentry/__x64_sys_execve";
     license: "GPL";
-
-    return 0; 
+    return 0;
 }
