@@ -29,9 +29,10 @@ struct {
 
 char LICENSE[] SEC("license") = "GPL";
 
-SEC("fentry/__x64_sys_execve")
+SEC("lsm/file_open")
 int fe_execve(void *ctx) {
-    (void)ctx;
+    // ctx is hook-specific (file, task, socket, etc)
+    // return 0 to allow, -EPERM to deny
     return 0;
 }
 

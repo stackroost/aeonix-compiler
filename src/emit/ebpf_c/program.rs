@@ -3,7 +3,7 @@ use std::path::Path;
 
 use super::{helpers, maps, write, xdp};
 use crate::{
-    emit::ebpf_c::{cgroup, fentry, kprobe, raw_tracepoint, sk, tc, tracepoint},
+    emit::ebpf_c::{cgroup, fentry, kprobe, lsm, raw_tracepoint, sk, tc, tracepoint},
     ir::ProgramIr,
 };
 
@@ -61,6 +61,9 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
             s if s.starts_with("fentry/") || s.starts_with("fexit/") => {
                 fentry::emit_fentry(&mut c, unit, s)?
             }
+
+            // lsm
+            s if s.starts_with("lsm/") => lsm::emit_lsm(&mut c, unit, s)?,
 
             s => return Err(format!("Unsupported section: {}", s)),
         }

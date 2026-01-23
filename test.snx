@@ -1,5 +1,5 @@
 unit fe_execve {
-    section: "fentry/__x64_sys_execve";
+    section: "lsm/file_open";
     license: "GPL";
     return 0;
 }

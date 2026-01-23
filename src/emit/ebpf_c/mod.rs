@@ -10,3 +10,4 @@ pub mod kprobe;
 pub mod raw_tracepoint;
 pub mod tracepoint;
 pub mod fentry;
+pub mod lsm;
