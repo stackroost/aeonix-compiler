@@ -31,6 +31,10 @@ pub enum Opcode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOp {
     Add,
+    Sub,
+    Mul,
+    Div,
+    Mod
 }
 
 #[allow(dead_code)]

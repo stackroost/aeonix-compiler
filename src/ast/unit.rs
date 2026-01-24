@@ -38,8 +38,12 @@ pub struct Assignment {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(unused)]
 pub enum AssignmentOp {
-    Assign,     
-    AddAssign,  
+    Assign,
+    AddAssign,
+    SubAssign,
+    MulAssign,
+    DivAssign,
+    ModAssign,
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +60,24 @@ pub struct Expr {
     pub loc: SourceLoc,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[allow(unused)]
+pub enum BinOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+}
+
+#[derive(Debug, Clone)]
+#[allow(unused)]
+pub struct BinaryExpr {
+    pub op: BinOp,
+    pub left: Box<Expr>,
+    pub right: Box<Expr>,
+}
+
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub enum ExprKind {
@@ -64,6 +86,7 @@ pub enum ExprKind {
     MethodCall(MethodCall),
     HeapLookup(HeapLookup),
     Dereference(Box<Expr>),
+    Binary(BinaryExpr),
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +100,7 @@ pub struct VarDecl {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(unused)]
 pub enum VarType {
-    Reg,  
+    Reg,
     Imm,
 }
 
@@ -102,4 +125,3 @@ pub struct HeapVarDecl {
     pub name: String,
     pub lookup: HeapLookup,
 }
-
