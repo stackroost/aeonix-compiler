@@ -1,27 +1,41 @@
-
 #![allow(unused_assignments)]
 
-use miette::{Diagnostic, SourceSpan};
 use crate::parser::TokenKind;
-
+use miette::{Diagnostic, SourceSpan};
 
 #[derive(Debug, Diagnostic, thiserror::Error)]
 pub enum LexError {
     #[error("Unterminated comment")]
     #[diagnostic(help("Comments start with /* and end with */"))]
-    UnterminatedComment { #[allow(unused)] span: SourceSpan },
+    UnterminatedComment {
+        #[allow(unused)]
+        span: SourceSpan,
+    },
 
     #[error("Invalid character")]
-    InvalidCharacter { #[allow(unused)] span: SourceSpan },
+    InvalidCharacter {
+        #[allow(unused)]
+        span: SourceSpan,
+    },
 
     #[error("Unterminated string literal")]
-    UnterminatedString { #[allow(unused)] span: SourceSpan },
+    UnterminatedString {
+        #[allow(unused)]
+        span: SourceSpan,
+    },
 
     #[error("Invalid escape sequence: \\{seq}")]
-    InvalidEscapeSequence { seq: String, #[allow(unused)] span: SourceSpan },
+    InvalidEscapeSequence {
+        seq: String,
+        #[allow(unused)]
+        span: SourceSpan,
+    },
 
     #[error("Expected string literal")]
-    ExpectedStringLiteral { #[allow(unused)] span: SourceSpan },
+    ExpectedStringLiteral {
+        #[allow(unused)]
+        span: SourceSpan,
+    },
 }
 
 pub struct Lexer<'src> {
@@ -133,7 +147,7 @@ impl<'src> Lexer<'src> {
         }
 
         let lexeme = &self.src[start..self.index];
-        
+
         let kind = match lexeme {
             "unit" => crate::parser::TokenKind::KeywordUnit,
             "section" => crate::parser::TokenKind::KeywordSection,
@@ -170,10 +184,7 @@ impl<'src> Lexer<'src> {
             self.advance();
         }
 
-        if self.index + 1 < self.bytes.len() 
-            && self.peek() == '0' 
-            && self.peek_next() == 'x' 
-        {
+        if self.index + 1 < self.bytes.len() && self.peek() == '0' && self.peek_next() == 'x' {
             self.advance();
             self.advance();
             let mut has_digits = false;
@@ -222,7 +233,11 @@ impl<'src> Lexer<'src> {
         }
 
         let lexeme = &self.src[start..self.index];
-        Ok(crate::parser::Token::new_number(lexeme.to_string(), loc, value))
+        Ok(crate::parser::Token::new_number(
+            lexeme.to_string(),
+            loc,
+            value,
+        ))
     }
 
     fn read_string(&mut self) -> Result<crate::parser::Token, LexError> {
@@ -285,7 +300,7 @@ impl<'src> Lexer<'src> {
     pub fn next_token(&mut self) -> Result<crate::parser::Token, LexError> {
         loop {
             self.skip_whitespace();
-            
+
             if self.index >= self.bytes.len() {
                 return Ok(crate::parser::Token::eof(self.index));
             }
@@ -294,7 +309,8 @@ impl<'src> Lexer<'src> {
             if let Err(e) = self.skip_comment() {
                 return Err(e);
             }
-            
+
+            // If we consumed a comment, loop again to skip whitespace/comments after it
             if self.index == before {
                 break;
             }
@@ -303,14 +319,20 @@ impl<'src> Lexer<'src> {
         let loc = self.current_loc();
         let ch = self.peek();
 
+        // identifiers / keywords
         if ch.is_alphabetic() || ch == '_' {
             return Ok(self.read_identifier());
         }
 
-        if ch.is_ascii_digit() || ch == '-' {
+        // numbers (including negative literals like -10)
+        if ch.is_ascii_digit() {
+            return self.read_number();
+        }
+        if ch == '-' && self.peek_next().is_ascii_digit() {
             return self.read_number();
         }
 
+        // strings
         if ch == '"' {
             return self.read_string();
         }
@@ -340,10 +362,6 @@ impl<'src> Lexer<'src> {
                 self.advance();
                 Ok(crate::parser::Token::new(TokenKind::Dot, ".", loc))
             }
-            '*' => {
-                self.advance();
-                Ok(crate::parser::Token::new(TokenKind::Star, "*", loc))
-            }
             ';' => {
                 self.advance();
                 Ok(crate::parser::Token::new(TokenKind::Semicolon, ";", loc))
@@ -352,17 +370,58 @@ impl<'src> Lexer<'src> {
                 self.advance();
                 Ok(crate::parser::Token::new(TokenKind::Equals, "=", loc))
             }
+
+            // Operators + compound assigns
             '+' => {
                 self.advance();
                 if self.peek() == '=' {
                     self.advance();
                     Ok(crate::parser::Token::new(TokenKind::PlusEquals, "+=", loc))
                 } else {
-                    Err(LexError::InvalidCharacter {
-                        span: (loc.offset..loc.offset + 1).into(),
-                    })
+                    Ok(crate::parser::Token::new(TokenKind::Plus, "+", loc))
                 }
             }
+            '-' => {
+                self.advance();
+                if self.peek() == '=' {
+                    self.advance();
+                    Ok(crate::parser::Token::new(TokenKind::MinusEquals, "-=", loc))
+                } else {
+                    Ok(crate::parser::Token::new(TokenKind::Minus, "-", loc))
+                }
+            }
+            '*' => {
+                self.advance();
+                if self.peek() == '=' {
+                    self.advance();
+                    Ok(crate::parser::Token::new(TokenKind::StarEquals, "*=", loc))
+                } else {
+                    Ok(crate::parser::Token::new(TokenKind::Star, "*", loc))
+                }
+            }
+            '/' => {
+                self.advance();
+                if self.peek() == '=' {
+                    self.advance();
+                    Ok(crate::parser::Token::new(TokenKind::SlashEquals, "/=", loc))
+                } else {
+                    Ok(crate::parser::Token::new(TokenKind::Slash, "/", loc))
+                }
+            }
+            '%' => {
+                self.advance();
+                if self.peek() == '=' {
+                    self.advance();
+                    Ok(crate::parser::Token::new(
+                        TokenKind::PercentEquals,
+                        "%=",
+                        loc,
+                    ))
+                } else {
+                    Ok(crate::parser::Token::new(TokenKind::Percent, "%", loc))
+                }
+            }
+
             _ => Err(LexError::InvalidCharacter {
                 span: (loc.offset..loc.offset + 1).into(),
             }),

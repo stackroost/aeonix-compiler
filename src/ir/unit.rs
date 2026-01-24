@@ -36,6 +36,8 @@ pub enum Terminator {
 
 struct LowerCtx {
     vars: std::collections::HashMap<String, VarId>,
+    // Track which variables are map pointers (from CallMap operations)
+    map_ptr_vars: std::collections::HashSet<VarId>,
 }
 
 impl UnitIr {
@@ -50,6 +52,7 @@ impl UnitIr {
 
         let mut ctx = LowerCtx {
             vars: std::collections::HashMap::new(),
+            map_ptr_vars: std::collections::HashSet::new(),
         };
 
         let mut current_block = BasicBlock {
@@ -113,6 +116,8 @@ fn lower_statement(
             });
 
             ctx.vars.insert(heap_decl.name.clone(), result);
+            // Mark this variable as coming from a map lookup
+            ctx.map_ptr_vars.insert(result);
         }
 
         StmtKind::Assignment(assign) => {
@@ -121,6 +126,24 @@ fn lower_statement(
             match &assign.target.kind {
                 ExprKind::Dereference(ptr_expr) => {
                     let ptr = lower_expr(ptr_expr, ctx, ir, block)?;
+                    
+                    // If the pointer is a map pointer, we need to insert a null check
+                    let needs_null_check = if let Operand::Var(ptr_var) = ptr {
+                        ctx.map_ptr_vars.contains(&ptr_var)
+                    } else {
+                        false
+                    };
+                    
+                    if needs_null_check {
+                        // Emit a NullCheck instruction
+                        let null_check_result = ir.alloc_var(crate::ast::Type::U64);
+                        block.instructions.push(Instruction {
+                            result: null_check_result,
+                            opcode: Opcode::NullCheck,
+                            operands: vec![ptr.clone()],
+                            result_type: crate::ast::Type::U64,
+                        });
+                    }
                     
                     // For +=, we need to load the current value, add, then store
                     let final_value = if assign.op == crate::ast::AssignmentOp::AddAssign {
@@ -337,6 +360,30 @@ fn lower_expr(
                 result_type: crate::ast::Type::U64,
             });
             
+            Ok(Operand::Var(result))
+        }
+
+        ExprKind::Binary(bin) => {
+            let left = lower_expr(&bin.left, ctx, ir, block)?;
+            let right = lower_expr(&bin.right, ctx, ir, block)?;
+
+            let result = ir.alloc_var(crate::ast::Type::U64);
+
+            let op = match bin.op {
+                crate::ast::BinOp::Add => BinaryOp::Add,
+                crate::ast::BinOp::Sub => BinaryOp::Sub,
+                crate::ast::BinOp::Mul => BinaryOp::Mul,
+                crate::ast::BinOp::Div => BinaryOp::Div,
+                crate::ast::BinOp::Mod => BinaryOp::Mod,
+            };
+
+            block.instructions.push(Instruction {
+                result,
+                opcode: Opcode::Binary { op },
+                operands: vec![left, right],
+                result_type: crate::ast::Type::U64,
+            });
+
             Ok(Operand::Var(result))
         }
 

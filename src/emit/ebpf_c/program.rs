@@ -12,7 +12,7 @@ pub fn emit_program(program: &ProgramIr, output: &Path) -> Result<(), String> {
 
     emit_prelude(&mut c)?;
     helpers::emit_helpers(&mut c)?;
-    maps::emit_maps(&mut c, &[])?;
+    maps::emit_maps(&mut c, &program.maps)?;
 
     for unit in &program.units {
         let sec0 = unit

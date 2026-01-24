@@ -194,27 +194,139 @@ fn parse_stmt(parser: &mut Parser, body: &mut Vec<Stmt>) -> Result<(), ParseErro
 }
 
 pub fn parse_expr(parser: &mut Parser) -> Result<Expr, ParseError> {
-    
+    parse_add(parser)
+}
+
+fn parse_add(parser: &mut Parser) -> Result<Expr, ParseError> {
+    let mut expr = parse_mul(parser)?;
+
+    loop {
+        if parser.r#match(TokenKind::Plus) {
+            let rhs = parse_mul(parser)?;
+            let loc = expr.loc;
+            expr = Expr {
+                kind: ExprKind::Binary(crate::ast::BinaryExpr {
+                    op: crate::ast::BinOp::Add,
+                    left: Box::new(expr),
+                    right: Box::new(rhs),
+                }),
+                loc,
+            };
+            continue;
+        }
+
+        if parser.r#match(TokenKind::Minus) {
+            let rhs = parse_mul(parser)?;
+            let loc = expr.loc;
+            expr = Expr {
+                kind: ExprKind::Binary(crate::ast::BinaryExpr {
+                    op: crate::ast::BinOp::Sub,
+                    left: Box::new(expr),
+                    right: Box::new(rhs),
+                }),
+                loc,
+            };
+            continue;
+        }
+
+        break;
+    }
+
+    Ok(expr)
+}
+
+// * / %
+fn parse_mul(parser: &mut Parser) -> Result<Expr, ParseError> {
+    let mut expr = parse_unary(parser)?;
+
+    loop {
+        if parser.r#match(TokenKind::Star) {
+            let rhs = parse_unary(parser)?;
+            let loc = expr.loc;
+            expr = Expr {
+                kind: ExprKind::Binary(crate::ast::BinaryExpr {
+                    op: crate::ast::BinOp::Mul,
+                    left: Box::new(expr),
+                    right: Box::new(rhs),
+                }),
+                loc,
+            };
+            continue;
+        }
+
+        if parser.r#match(TokenKind::Slash) {
+            let rhs = parse_unary(parser)?;
+            let loc = expr.loc;
+            expr = Expr {
+                kind: ExprKind::Binary(crate::ast::BinaryExpr {
+                    op: crate::ast::BinOp::Div,
+                    left: Box::new(expr),
+                    right: Box::new(rhs),
+                }),
+                loc,
+            };
+            continue;
+        }
+
+        if parser.r#match(TokenKind::Percent) {
+            let rhs = parse_unary(parser)?;
+            let loc = expr.loc;
+            expr = Expr {
+                kind: ExprKind::Binary(crate::ast::BinaryExpr {
+                    op: crate::ast::BinOp::Mod,
+                    left: Box::new(expr),
+                    right: Box::new(rhs),
+                }),
+                loc,
+            };
+            continue;
+        }
+
+        break;
+    }
+
+    Ok(expr)
+}
+
+// unary: *expr (dereference)
+fn parse_unary(parser: &mut Parser) -> Result<Expr, ParseError> {
     if parser.r#match(TokenKind::Star) {
-        let inner = parse_expr(parser)?;
-        let inner_loc = inner.loc; 
+        let inner = parse_unary(parser)?;
+        let inner_loc = inner.loc;
         return Ok(Expr {
             kind: ExprKind::Dereference(Box::new(inner)),
             loc: inner_loc,
         });
     }
+
+    parse_primary(parser)
+}
+
+fn parse_primary(parser: &mut Parser) -> Result<Expr, ParseError> {
+    // number
     if parser.check(TokenKind::Number) {
         let num_tok = parser.expect(TokenKind::Number)?;
-        let value = num_tok.int_value.ok_or_else(|| {
-            parser.error("Invalid number literal")
-        })?;
-        
+        let value = num_tok
+            .int_value
+            .ok_or_else(|| parser.error("Invalid number literal"))?;
+
         return Ok(Expr {
             kind: ExprKind::Number(value),
             loc: num_tok.loc,
         });
     }
+
+    // (expr)
+    if parser.r#match(TokenKind::LParen) {
+        let e = parse_expr(parser)?;
+        expect_token(parser, TokenKind::RParen)?;
+        return Ok(e);
+    }
+
+    // identifier or method call
     let receiver_tok = parser.expect(TokenKind::Identifier)?;
+
+    // method call: receiver.method(arg)
     if parser.r#match(TokenKind::Dot) {
         let method_tok = parser.expect(TokenKind::Identifier)?;
         expect_token(parser, TokenKind::LParen)?;
@@ -231,6 +343,7 @@ pub fn parse_expr(parser: &mut Parser) -> Result<Expr, ParseError> {
         });
     }
 
+    // variable
     Ok(Expr {
         kind: ExprKind::Variable(receiver_tok.lexeme),
         loc: receiver_tok.loc,
