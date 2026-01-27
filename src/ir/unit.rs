@@ -110,7 +110,7 @@ fn lower_statement(
 
             block.instructions.push(Instruction {
                 result,
-                opcode: Opcode::CallMap,
+                opcode: Opcode::CallMap { map_name: heap_decl.lookup.map_name.clone() },
                 operands: vec![key],
                 result_type: crate::ast::Type::U64,
             });
@@ -338,7 +338,7 @@ fn lower_expr(
 
                 block.instructions.push(Instruction {
                     result,
-                    opcode: Opcode::CallMap,
+                    opcode: Opcode::CallMap { map_name: call.receiver.clone() },
                     operands: vec![key],
                     result_type: crate::ast::Type::U64,
                 });
