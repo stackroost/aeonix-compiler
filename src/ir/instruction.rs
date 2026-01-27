@@ -25,7 +25,7 @@ pub enum Opcode {
 
     Binary { op: BinaryOp },
 
-    CallMap,
+    CallMap { map_name: String },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

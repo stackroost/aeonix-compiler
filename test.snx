@@ -5,24 +5,16 @@ map results {
     max: 8;
 }
 
-unit tp_execve_vars {
+unit sample_tracepoint {
     section: "tracepoint/syscalls/sys_enter_execve";
     license: "GPL";
 
     reg a = 10;
     reg b = 20;
 
-    reg c = a + b;   // 30
-    reg d = b - a;   // 10
-    reg e = a * b;   // 200
-    reg f = b / a;   // 2
-    reg g = b % a;   // 0
+    reg c = a + b;   
 
     imm k0 = 0; heap p0 = results.lookup(k0); *p0 = c;
-    imm k1 = 1; heap p1 = results.lookup(k1); *p1 = d;
-    imm k2 = 2; heap p2 = results.lookup(k2); *p2 = e;
-    imm k3 = 3; heap p3 = results.lookup(k3); *p3 = f;
-    imm k4 = 4; heap p4 = results.lookup(k4); *p4 = g;
 
     return 0;
 }

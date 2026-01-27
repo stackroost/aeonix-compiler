@@ -8,18 +8,16 @@ pub fn emit_tracepoint(out: &mut String, unit: &UnitIr, sec: &str) -> Result<(),
     writeln!(out, "SEC(\"{}\")", sec).map_err(err)?;
     writeln!(out, "int {}(void *ctx) {{", unit.name).map_err(err)?;
     writeln!(out, "    (void)ctx;").map_err(err)?;
-
-    // 1. Identify which variables MUST be pointers (those assigned via CallMap)
+    
     let mut pointer_vars = HashSet::new();
     for block in &unit.blocks {
         for inst in &block.instructions {
-            if let Opcode::CallMap = inst.opcode {
+            if let Opcode::CallMap { .. } = inst.opcode {
                 pointer_vars.insert(inst.result.0);
             }
         }
     }
-
-    // 2. Declare all variables at the TOP of the function
+    
     let mut declared = HashSet::new();
     for block in &unit.blocks {
         for inst in &block.instructions {
@@ -39,8 +37,7 @@ pub fn emit_tracepoint(out: &mut String, unit: &UnitIr, sec: &str) -> Result<(),
             }
         }
     }
-
-    // 3. Emit instruction logic
+    
     let mut in_if_block = false;
     for block in &unit.blocks {
         for inst in &block.instructions {
@@ -66,19 +63,14 @@ pub fn emit_tracepoint(out: &mut String, unit: &UnitIr, sec: &str) -> Result<(),
                     }
                 }
 
-                Opcode::CallMap => {
-                    // key is usually at operands[1] or operands[0] depending on your IR
-                    // We check if it's a Var or Imm and get its address
+                Opcode::CallMap { map_name } => {
                     if let Some(key_op) = inst.operands.get(0) {
                         let key_val = format_operand(key_op);
-                        // BPF helper needs a pointer to the key. 
-                        // If it's a variable, we pass &vX.
-                        writeln!(out, "    {} = bpf_map_lookup_elem(&results, &{});", res, key_val).map_err(err)?;
+                        writeln!(out, "    {} = bpf_map_lookup_elem(&{}, &{});", res, map_name, key_val).map_err(err)?;
                     }
                 }
 
                 Opcode::NullCheck => {
-                    // The operand is the actual pointer to check
                     if let Some(ptr_op) = inst.operands.get(0) {
                         let ptr_val = format_operand(ptr_op);
                         writeln!(out, "    if ({}) {{", ptr_val).map_err(err)?;
@@ -87,13 +79,11 @@ pub fn emit_tracepoint(out: &mut String, unit: &UnitIr, sec: &str) -> Result<(),
                 }
 
                 Opcode::Store { .. } => {
-                    // operands[0] is the pointer, operands[1] is the value to store
                     if inst.operands.len() >= 2 {
                         let ptr = format_operand(&inst.operands[0]);
                         let val = format_operand(&inst.operands[1]);
                         writeln!(out, "        *{} = {};", ptr, val).map_err(err)?;
                     }
-                    // Close the if block if we're in one
                     if in_if_block {
                         writeln!(out, "    }}").map_err(err)?;
                         in_if_block = false;

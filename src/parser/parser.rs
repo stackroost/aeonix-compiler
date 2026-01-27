@@ -1,4 +1,3 @@
-
 #![allow(unused_assignments)]
 
 use super::{Token, TokenKind};
@@ -17,6 +16,22 @@ pub struct ParseError {
     pub message: String,
     #[allow(unused)]
     pub help: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BinOp {
+    Add,
+}
+
+#[derive(Debug, Clone)]
+pub enum Expr {
+    Number(i64),
+    Var(String),
+    Binary {
+        left: Box<Expr>,
+        op: BinOp,
+        right: Box<Expr>,
+    },
 }
 
 impl ParseError {
@@ -43,14 +58,21 @@ pub struct Parser<'src> {
 impl<'src> Parser<'src> {
     pub fn new(src: &'src str) -> Result<Self, ParseError> {
         let mut lexer = Lexer::new(src);
-        let current = lexer.next_token()
-            .map_err(|_e| ParseError::new(super::SourceLoc::new(0, 0, 0), "Failed to lex first token"))?;
-        
-        Ok(Self { _src: src, lexer, current })
+        let current = lexer.next_token().map_err(|_e| {
+            ParseError::new(super::SourceLoc::new(0, 0, 0), "Failed to lex first token")
+        })?;
+
+        Ok(Self {
+            _src: src,
+            lexer,
+            current,
+        })
     }
 
     pub fn advance(&mut self) -> Result<(), ParseError> {
-        self.current = self.lexer.next_token()
+        self.current = self
+            .lexer
+            .next_token()
             .map_err(|_e| ParseError::new(self.current.loc, "Lexer error"))?;
         Ok(())
     }
@@ -76,8 +98,9 @@ impl<'src> Parser<'src> {
         } else {
             Err(ParseError::new(
                 self.current.loc,
-                format!("Expected {}, found {}", kind, self.current.kind)
-            ).with_help(format!("Expected token: {}", kind)))
+                format!("Expected {}, found {}", kind, self.current.kind),
+            )
+            .with_help(format!("Expected token: {}", kind)))
         }
     }
 
@@ -85,9 +108,12 @@ impl<'src> Parser<'src> {
         ParseError::new(self.current.loc, message)
     }
 
-    pub fn error_with_help(&self, message: impl Into<String>, help: impl Into<String>) -> ParseError {
-        ParseError::new(self.current.loc, message)
-            .with_help(help)
+    pub fn error_with_help(
+        &self,
+        message: impl Into<String>,
+        help: impl Into<String>,
+    ) -> ParseError {
+        ParseError::new(self.current.loc, message).with_help(help)
     }
 
     pub fn current(&self) -> &Token {
@@ -104,5 +130,41 @@ impl<'src> Parser<'src> {
 
     pub fn _current_lexeme(&self) -> &str {
         &self.current.lexeme
+    }
+
+    pub fn parse_expr(&mut self) -> Result<Expr, ParseError> {
+        self.parse_additive()
+    }
+
+    fn parse_additive(&mut self) -> Result<Expr, ParseError> {
+        let mut left = self.parse_primary()?;
+
+        while self.current_kind() == TokenKind::Plus {
+            self.advance()?; // eat '+'
+            let right = self.parse_primary()?;
+            left = Expr::Binary {
+                left: Box::new(left),
+                op: BinOp::Add,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(left)
+    }
+
+    fn parse_primary(&mut self) -> Result<Expr, ParseError> {
+        match self.current_kind() {
+            TokenKind::Number => {
+                let tok = self.current.clone();
+                self.advance()?;
+                Ok(Expr::Number(tok.int_value.unwrap()))
+            }
+            TokenKind::Identifier => {
+                let tok = self.current.clone();
+                self.advance()?;
+                Ok(Expr::Var(tok.lexeme))
+            }
+            _ => Err(self.error("Expected expression")),
+        }
     }
 }
