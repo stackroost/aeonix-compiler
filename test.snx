@@ -5,16 +5,18 @@ map results {
     max: 8;
 }
 
-unit sample_tracepoint {
+unit t5_if_test {
     section: "tracepoint/syscalls/sys_enter_execve";
     license: "GPL";
 
     reg a = 10;
     reg b = 20;
 
-    reg c = a + b;   
-
-    imm k0 = 0; heap p0 = results.lookup(k0); *p0 = c;
+    if guard(a < b) {
+        imm k0 = 0;
+        heap p0 = results.lookup(k0);
+        *p0 = 1;
+    }
 
     return 0;
 }
