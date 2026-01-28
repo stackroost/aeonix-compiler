@@ -12,24 +12,16 @@ struct {
 char LICENSE[] SEC("license") = "GPL";
 
 SEC("tracepoint/syscalls/sys_enter_execve")
-int sample_tracepoint(void *ctx) {
+int t4_null_deref(void *ctx) {
     (void)ctx;
     __u64 v0 = 0;
-    __u64 v1 = 0;
-    __u64 v3 = 0;
+    __u64 *v1 = 0;
     __u64 v2 = 0;
-    __u64 v4 = 0;
-    __u64 *v5 = 0;
-    __u64 v6 = 0;
-    __u64 v7 = 0;
-    v0 = 10 + 0;
-    v1 = 20 + 0;
-    v3 = v0 + v1;
-    v2 = v3 + 0;
-    v4 = 0 + 0;
-    v5 = bpf_map_lookup_elem(&results, &v4);
-    if (v5) {
-        *v5 = v2;
+    __u64 v3 = 0;
+    v0 = 100 + 0;
+    v1 = bpf_map_lookup_elem(&results, &v0);
+    if (v1) {
+        *v1 = 1;
     }
     return 0;
 }
