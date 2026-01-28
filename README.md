@@ -6,6 +6,8 @@ A simple compiler for the Solnix programming language. Solnix lets you write eBP
 
 Solnix is a domain-specific language for creating eBPF programs. It provides a cleaner way to define maps, packet filters, and network functions that run in the Linux kernel.
 
+## 🚧 Status: Under Active Development
+
 ## Installation
 
 Make sure you have Rust installed. Then:
